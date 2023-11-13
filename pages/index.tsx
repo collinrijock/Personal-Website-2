@@ -1,22 +1,22 @@
 import Head from 'next/head';
 import { Gradient } from '../components/Gradient.js';
+import ThreeJSEnvironment from '../components/Text';
 import { useEffect } from 'react';
 import Navbar from '@/components/navbar';
-import { signInWithPopup, GoogleAuthProvider } from "firebase/auth";
 
 export default function Home() {
 
   const gradientStyle = {
     width: '100%',
     height: '100%',
-    '--gradient-color-1': "#2a4e47",
-    '--gradient-color-2': '#f5e4d2',
-    '--gradient-color-4': '#0a1d1a',
-    '--gradient-color-3': '#ffffff',
+    '--gradient-color-1': "#000022",
+    '--gradient-color-2': '#E7D7C1',
+    '--gradient-color-4': '#FD1D64',
+    '--gradient-color-3': '#590004',
   }
 
   const navButtonClasses =
-  'font-sans cursor-pointer text-white text-opacity-50 transition-all duration-200 hover:text-opacity-100';
+    'font-sans cursor-pointer text-white text-opacity-50 transition-all duration-200 hover:text-opacity-100';
 
 
   useEffect(() => {
@@ -39,19 +39,11 @@ export default function Home() {
           href="https://fonts.googleapis.com/css?family=Roboto|Roboto+Mono"
         />
       </Head>
-      <div className="relative w-full h-screen overflow-hidden">
+      <div className="relative w-full h-screen overflow-hidden flex flex-col items-center justify-center">
         <canvas id="gradient-canvas" className='absolute -z-10' style={gradientStyle} data-transition-in />
         <Navbar />
-        <main className="flex items-center justify-center w-full h-full">
-          <div className="text-center">
-            <h1 className="text-5xl font-bold mb-4 mix-blend-color-difference opacity-90 text-shadow-xl">
-              Building Great Software
-            </h1>
-            <p className="text-xl opacity-50 text-shadow-xl tracking-widest uppercase">
-              design - full stack - machine learning
-            </p>
-          </div>
-        </main>
+        <ThreeJSEnvironment  />
+        {/* Add data and a blender image */}
       </div>
     </>
   );

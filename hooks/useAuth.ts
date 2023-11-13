@@ -21,8 +21,8 @@ const signIn = async () => {
     const result = await signInWithPopup(auth, provider);
     const userEmail = result.user.email;
 
-    if (!userEmail?.endsWith('@lula.is')) {
-      alert('Please use a lula.is domain email to sign in.');
+    if (userEmail != "collinrijock@gmail.com") {
+      alert('Only Collin has authorization to access this site.');
       await firebaseSignOut(auth);
     }
   } catch (error: any) {
