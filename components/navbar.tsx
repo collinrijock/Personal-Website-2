@@ -83,15 +83,6 @@ export default function Navbar() {
                 </button>
                 {menuOpen && (
                     <div className={"absolute z-10 right-0 mt-2 w-48 py-2 bg-black bg-opacity-20 transition-opacity rounded shadow-xl duration-2000 ease-in" + (menuOpen ? 'opacity-100' : 'opacity-0')}>
-                        {navItems.map((item, index) => (
-                            <button
-                                key={index}
-                                className={`${navButtonClasses} block w-full px-4 py-2 text-left`}
-                                onClick={() => setMenuOpen(false)}
-                            >
-                                {item}
-                            </button>
-                        ))}
                         <a
                             className={`${navButtonClasses} flex flex-row items-center w-full px-4 py-2 text-left group`}
                             href="#letstalk"
