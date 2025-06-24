@@ -1,50 +1,59 @@
 import Head from 'next/head';
-import { Gradient } from '../components/Gradient.js';
-import ThreeJSEnvironment from '../components/Text';
 import { useEffect } from 'react';
-import Navbar from '@/components/navbar';
+import ScrollStage from '../lib/sos/ScrollStage';
+import Link from 'next/link';
+import { contentData } from '../lib/content';
 
 export default function Home() {
-
-  const gradientStyle = {
-    width: '100%',
-    height: '100%',
-    '--gradient-color-1': "#000022",
-    '--gradient-color-2': '#E7D7C1',
-    '--gradient-color-4': '#FD1D64',
-    '--gradient-color-3': '#590004',
-  }
-
-  const navButtonClasses =
-    'font-sans cursor-pointer text-white text-opacity-50 transition-all duration-200 hover:text-opacity-100';
-
-
   useEffect(() => {
-    const canvasElement = document.getElementById("gradient-canvas");
-    const gradient: any = new Gradient();
-    if (canvasElement) {
-      gradient.initGradient("#gradient-canvas");
-    } else {
-      gradient.pause();
-    }
+    // Prevent creating multiple instances on hot-reload
+    if (document.querySelector('.webgl')) return;
+    
+    document.body.classList.add('loading');
+    const stage = new ScrollStage();
+    // The ScrollStage class will handle removing the 'loading' class on window.load
   }, []);
 
   return (
     <>
       <Head>
-        <title>Collin Rijock - Personal</title>
+        <title>Collin Rijock</title>
+        <meta name="description" content="The personal website of Collin Rijock, showcasing projects and essays." />
+        <meta name="keywords" content="collin rijock, developer, writer, portfolio, webgl, react, javascript, essays, startups, engineer, founder" />
+        <meta name="author" content="Collin Rijock" />
         <link rel="icon" href="/favicon.ico" />
-        <link
-          rel="stylesheet"
-          href="https://fonts.googleapis.com/css?family=Roboto|Roboto+Mono"
-        />
       </Head>
-      <div className="relative w-full h-screen overflow-hidden flex flex-col items-center justify-center">
-        <canvas id="gradient-canvas" className='absolute -z-10' style={gradientStyle} data-transition-in />
-        <Navbar />
-        <ThreeJSEnvironment  />
-        {/* Add data and a blender image */}
-      </div>
+      <main>
+        <div className="frame">
+          <div className="frame__title-wrap">
+            <h1 className="frame__title">Collin Rijock</h1>
+          </div>
+          <nav className="frame__links">
+            <a href="https://github.com/collinrijock" target="_blank" rel="noopener noreferrer">GitHub</a>
+            <a href="https://x.com/CollinRijock" target="_blank" rel="noopener noreferrer">Twitter</a>
+            <a href="mailto:collinrijock@gmail.com">Contact</a>
+          </nav>
+        </div>
+        <div className="content">
+          <div className="scroll__stage">
+            <div className="scroll__content">
+              <div className="content-grid">
+                {contentData.map((item, index) => (
+                  <div className="card" key={index}>
+                    <span className="card-type">{item.type}</span>
+                    <h3>{item.title}</h3>
+                    <p>{item.description}</p>
+                    <Link href={item.type === 'Project' ? `/projects/${item.id}` : `/essays/${item.id}`} className="card-link">
+                      Details
+                    </Link>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+          <div className="layout__line"></div>
+        </div>
+      </main>
     </>
   );
 }
