@@ -2,6 +2,7 @@ import { GetStaticPaths, GetStaticProps } from 'next';
 import Head from 'next/head';
 import Link from 'next/link';
 import { contentData } from '../../lib/content';
+import { NodxWaveCanvas } from '../../components/NodxWaveCanvas';
 
 interface ContentItem {
   id: string;
@@ -10,6 +11,7 @@ interface ContentItem {
   description: string;
   link: string;
   content: string;
+  tags?: string[];
 }
 
 interface EssayPageProps {
@@ -30,6 +32,7 @@ const EssayPage = ({ essay, otherContent }: EssayPageProps) => {
         <link rel="icon" href="/favicon.ico" />
       </Head>
       <main>
+        <NodxWaveCanvas />
         <div className="frame">
           <div className="frame__title-wrap">
             <h1 className="frame__title"><Link href="/">Collin Rijock</Link></h1>
@@ -54,14 +57,20 @@ const EssayPage = ({ essay, otherContent }: EssayPageProps) => {
                   <h2>Read More</h2>
                   <div className="content-grid">
                     {otherContent.map((item) => (
-                      <div className="card" key={item.id}>
-                        <span className="card-type">{item.type}</span>
-                        <h3>{item.title}</h3>
-                        <p>{item.description}</p>
-                        <Link href={item.link} className="card-link">
-                          Details
-                        </Link>
-                      </div>
+                      <Link href={item.link} key={item.id} className="card-link-wrapper">
+                        <div className={`card ${item.type === 'Job' ? 'card--job' : item.type === 'Project' ? 'card--project' : ''}`}>
+                          <span className={`card-type ${item.type === 'Job' ? 'card-type--job' : item.type === 'Project' ? 'card-type--project' : ''}`}>{item.type}</span>
+                          <h3>{item.title}</h3>
+                          <p>{item.description}</p>
+                          {item.tags && (
+                            <div className="card-tags-container">
+                              {item.tags.map((tag) => (
+                                <span key={tag} className="card-tag">{tag}</span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </Link>
                     ))}
                   </div>
                 </section>

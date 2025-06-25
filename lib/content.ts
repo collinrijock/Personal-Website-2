@@ -9,11 +9,12 @@ export const contentData = [
   },
   {
     id: 'buildrfi',
-    type: 'Project',
+    type: 'Job',
     title: 'BuildrFi',
     description: 'A decentralized platform for construction project financing and management on the blockchain.',
     link: '/projects/buildrfi',
-    content: 'BuildrFi aims to revolutionize the construction industry by leveraging blockchain technology for transparent and efficient project financing. It connects developers with investors through smart contracts, automating payments based on project milestones. The platform also provides tools for project management, ensuring accountability and reducing disputes.'
+    content: 'BuildrFi aims to revolutionize the construction industry by leveraging blockchain technology for transparent and efficient project financing. It connects developers with investors through smart contracts, automating payments based on project milestones. The platform also provides tools for project management, ensuring accountability and reducing disputes.',
+    tags: ['Blockchain', 'DeFi', 'React', 'Solidity']
   },
   {
     id: 'curiosity',
@@ -25,11 +26,12 @@ export const contentData = [
   },
   {
     id: 'lula',
-    type: 'Project',
+    type: 'Job',
     title: 'LULA',
     description: 'An insurance infrastructure API for modern businesses, providing on-demand coverage solutions.',
     link: '/projects/lula',
-    content: 'LULA provides a comprehensive API for businesses to integrate insurance services seamlessly. From car rentals to delivery services, LULA offers usage-based insurance products that can be embedded directly into existing platforms. This project involved building a robust backend to handle policy management, claims processing, and compliance.'
+    content: 'LULA provides a comprehensive API for businesses to integrate insurance services seamlessly. From car rentals to delivery services, LULA offers usage-based insurance products that can be embedded directly into existing platforms. This project involved building a robust backend to handle policy management, claims processing, and compliance.',
+    tags: ['InsurTech', 'API', 'Node.js', 'React']
   },
   {
     id: 'being-a-generalist',
@@ -45,12 +47,13 @@ export const contentData = [
     title: 'Disgo',
     description: 'A social discovery app that helps you find new places and events based on your friends\' recommendations.',
     link: '/projects/disgo',
-    content: 'Disgo is a mobile application designed to make social planning easier. It aggregates recommendations from your social circle to suggest restaurants, bars, and events you\'re likely to enjoy. The app features a real-time map, event creation, and a unique "vibe" filter to match your mood.'
+    content: 'Disgo is a mobile application designed to make social planning easier. It aggregates recommendations from your social circle to suggest restaurants, bars, and events you\'re likely to enjoy. The app features a real-time map, event creation, and a unique "vibe" filter to match your mood.',
+    tags: ['Mobile App', 'React Native', 'Firebase']
   },
   {
     id: 'simplicity-and-good-design',
     type: 'Essay',
-    title: 'Simplicity <i>is</i> Good Design',
+    title: 'Simplicity = Good Design',
     description: 'An essay on the principles of simplicity in design and its profound impact on user experience.',
     link: '/essays/simplicity-and-good-design',
     content: 'Good design is not about adding more features; it\'s about taking away the unnecessary. This essay explores the philosophy of simplicity, drawing from principles like Dieter Rams\' "weniger, aber besser" (less, but better). I analyze how simplicity leads to more intuitive, elegant, and effective products, and how designers and engineers can strive for it in their work.'
@@ -61,7 +64,8 @@ export const contentData = [
     title: 'NodX',
     description: 'A decentralized identity management system using DIDs and verifiable credentials.',
     link: '/projects/nodx',
-    content: 'NodX is a project focused on giving users control over their digital identity. Using decentralized identifiers (DIDs) and verifiable credentials, it allows individuals to manage their personal data and share it securely without relying on centralized authorities. This enhances privacy and reduces the risk of data breaches.'
+    content: 'NodX is a project focused on giving users control over their digital identity. Using decentralized identifiers (DIDs) and verifiable credentials, it allows individuals to manage their personal data and share it securely without relying on centralized authorities. This enhances privacy and reduces the risk of data breaches.',
+    tags: ['Web3', 'Identity', 'TypeScript', 'Next.js']
   },
   {
     id: 'pantheon-of-founders',
@@ -73,19 +77,21 @@ export const contentData = [
   },
   {
     id: 'kabcash',
-    type: 'Project',
+    type: 'Job',
     title: 'KabCash',
     description: 'A micro-lending platform for small businesses in emerging markets, powered by mobile money.',
     link: '/projects/kabcash',
-    content: 'KabCash addresses the credit gap for small businesses in emerging economies. By integrating with mobile money services, the platform offers quick and accessible micro-loans. It uses alternative data for credit scoring, enabling financial inclusion for entrepreneurs who lack traditional banking history.'
+    content: 'KabCash addresses the credit gap for small businesses in emerging economies. By integrating with mobile money services, the platform offers quick and accessible micro-loans. It uses alternative data for credit scoring, enabling financial inclusion for entrepreneurs who lack traditional banking history.',
+    tags: ['FinTech', 'Mobile Money', 'Python']
   },
   {
     id: 'itx',
-    type: 'Project',
+    type: 'Job',
     title: 'ITx',
     description: 'An AI-powered platform for IT support automation, reducing resolution times for common issues.',
     link: '/projects/itx',
-    content: 'ITx is an enterprise solution that automates IT helpdesk tasks. It uses a natural language processing (NLP) engine to understand user requests and provides instant solutions for common problems. For more complex issues, it intelligently routes tickets to the appropriate support personnel, significantly improving efficiency.'
+    content: 'ITx is an enterprise solution that automates IT helpdesk tasks. It uses a natural language processing (NLP) engine to understand user requests and provides instant solutions for common problems. For more complex issues, it intelligently routes tickets to the appropriate support personnel, significantly improving efficiency.',
+    tags: ['AI', 'NLP', 'Enterprise']
   },
   {
     id: 'china',
@@ -101,6 +107,23 @@ export const contentData = [
     title: 'Legends Of The Friendgroup',
     description: 'A social party game where friends vote on hilarious prompts about each other.',
     link: '/projects/legends-of-the-friendgroup',
-    content: 'Legends Of The Friendgroup is a fun and engaging mobile party game. Players are presented with prompts like "Most likely to survive a zombie apocalypse," and they vote for the friend who best fits the description. The game is designed to spark laughter and create memorable moments among friends.'
+    content: 'Legends Of The Friendgroup is a fun and engaging mobile party game. Players are presented with prompts like "Most likely to survive a zombie apocalypse," and they vote for the friend who best fits the description. The game is designed to spark laughter and create memorable moments among friends.',
+    tags: ['Mobile Game', 'React Native']
+  },
+  {
+    id: 'llms-and-swe',
+    type: 'Essay',
+    title: 'LLMs and SWE',
+    description: 'Exploring the impact of Large Language Models on Software Engineering.',
+    link: '/essays/llms-and-swe',
+    content: 'This essay delves into the transformative potential of Large Language Models (LLMs) within the realm of Software Engineering. It examines how LLMs are changing development workflows, from code generation and debugging to documentation and testing. I discuss the opportunities and challenges presented by this new paradigm, including ethical considerations, job market shifts, and the evolving role of the human engineer in an AI-augmented future.'
+  },
+  {
+    id: 'incentives-inside-a-business',
+    type: 'Essay',
+    title: 'Incentives Inside a Business',
+    description: 'An analysis of how internal incentives shape organizational behavior and outcomes.',
+    link: '/essays/incentives-inside-a-business',
+    content: 'This essay explores the critical role of incentive structures within a business and how they profoundly influence employee behavior, team dynamics, and overall organizational success. I analyze various types of incentives—financial, recognition-based, and intrinsic—and discuss their intended and unintended consequences. Understanding and designing effective incentive systems is crucial for fostering productivity, innovation, and a healthy company culture.'
   },
 ];

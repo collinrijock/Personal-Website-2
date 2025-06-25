@@ -222,6 +222,18 @@ canvas.webgl {
   }
 }
 
+.nodx-wave-canvas {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100vh;
+  z-index: -1;
+  pointer-events: none;
+  background-color: var(--color-bg);
+  margin-top: 30vh;
+}
+
 .scroll__stage {
   position: fixed;
   top: 0;
@@ -327,7 +339,7 @@ canvas.webgl {
   z-index: 10;
   position: relative;
   overflow: hidden;
-  background: rgba(20, 20, 20, 0.4);
+  background: rgba(20, 20, 20, 0.7);
   -webkit-backdrop-filter: blur(10px) saturate(1.4) contrast(1.18);
   backdrop-filter: blur(10px) saturate(1.4) contrast(1.18);
   border: 1px solid rgba(255, 255, 255, 0.15);
@@ -336,22 +348,35 @@ canvas.webgl {
 
 .card:hover {
   transform: translateY(-5px);
-  background: rgba(30, 30, 30, 0.6);
+  background: rgba(30, 30, 30, 0.8);
 }
 
 .bio-section::before,
-.card::before {
+.card--project::before,
+.card--job::before {
   content: '';
   position: absolute;
   inset: -50%;
-  background: radial-gradient(
-    ellipse at 50% 50%,
-    rgba(99, 102, 241, 0.1) 0%,
-    transparent 70%
-  );
   filter: blur(15px);
   animation: liquidRefract 12s ease-in-out infinite;
   z-index: -1;
+}
+
+.bio-section::before,
+.card--project::before {
+  background: radial-gradient(
+    ellipse at 50% 50%,
+    rgba(99, 102, 241, 0.1) 0%, /* Purple tint */
+    transparent 70%
+  );
+}
+
+.card--job::before {
+   background: radial-gradient(
+    ellipse at 50% 50%,
+    rgba(59, 130, 246, 0.15) 0%, /* Blue tint */
+    transparent 70%
+  );
 }
 
 @keyframes liquidRefract {
@@ -360,6 +385,7 @@ canvas.webgl {
 }
 
 .card-type {
+  width: fit-content;
   font-family: degular-display, sans-serif;
   font-weight: 400;
   font-style: normal;
@@ -367,7 +393,23 @@ canvas.webgl {
   letter-spacing: .1ch;
   font-size: 0.8rem;
   color: #dd51b1 !important;
-  opacity: 0.8;
+  background-color: rgba(221, 81, 177, 0.15);
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  align-self: flex-start;
+  border: 1px solid rgba(221, 81, 177, 0.3);
+}
+
+.card-type--job {
+  color: #60a5fa !important;
+  background-color: rgba(96, 165, 250, 0.15);
+  border-color: rgba(96, 165, 250, 0.3);
+}
+
+.card-type--project {
+  color: #a78bfa !important;
+  background-color: rgba(167, 139, 250, 0.15);
+  border-color: rgba(167, 139, 250, 0.3);
 }
 
 .card h3 {
@@ -383,6 +425,7 @@ canvas.webgl {
   line-height: 1.5;
   color: rgba(255, 255, 255, 0.7);
   flex-grow: 1;
+  margin-bottom: 1rem; /* Add space between description and tags */
 }
 
 .card-link {
@@ -403,6 +446,30 @@ canvas.webgl {
 .card-link:hover {
   color: #dd51b1;
   border-bottom-color: white;
+}
+
+.card-tags-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: auto; /* Pushes tags to the bottom */
+}
+
+.card-tag {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.8);
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.card-link-wrapper,
+.card-link-wrapper:hover {
+  color: inherit;
+  text-decoration: none;
+  border-bottom: none;
 }
 
 .layout__line {

@@ -126,6 +126,10 @@ uniform float uFrequency;
 uniform float uAmplitude;
 uniform float uDensity;
 uniform float uStrength;
+uniform float uMouseX;
+uniform float uMouseY;
+uniform vec3 uClickPosition;
+uniform float uClickStrength;
 
 varying float vDistortion;
 
@@ -133,7 +137,17 @@ void main() {
   float distortion = pnoise(normal * uDensity, vec3(10.)) * uStrength;
 
   vec3 pos = position + (normal * distortion);
-  float angle = sin(uv.y * uFrequency) * uAmplitude;
+
+  // Add the raycaster click "poke" effect
+  float clickRadius = 2.5;
+  float distanceToClick = distance(position, uClickPosition);
+  float pokeAmount = smoothstep(clickRadius, 0.0, distanceToClick) * uClickStrength;
+  pos += normal * pokeAmount * -0.5; // Poke inwards
+  
+  float frequency = uFrequency + uMouseX * 3.0;
+  float amplitude = uAmplitude - uMouseY * 2.0;
+  
+  float angle = sin(uv.y * frequency) * amplitude;
   pos = rotateY(pos, angle);
     
   vDistortion = distortion;

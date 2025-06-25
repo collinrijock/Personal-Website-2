@@ -2,6 +2,7 @@ import { GetStaticPaths, GetStaticProps } from 'next';
 import Head from 'next/head';
 import Link from 'next/link';
 import { contentData } from '../../lib/content';
+import { NodxWaveCanvas } from '../../components/NodxWaveCanvas';
 
 interface ContentItem {
   id: string;
@@ -10,6 +11,7 @@ interface ContentItem {
   description: string;
   link: string;
   content: string;
+  tags?: string[];
 }
 
 interface ProjectPageProps {
@@ -30,6 +32,7 @@ const ProjectPage = ({ project, otherContent }: ProjectPageProps) => {
         <link rel="icon" href="/favicon.ico" />
       </Head>
       <main>
+        <NodxWaveCanvas />
         <div className="frame">
           <div className="frame__title-wrap">
             <h1 className="frame__title"><Link href="/">Collin Rijock</Link></h1>
@@ -46,7 +49,7 @@ const ProjectPage = ({ project, otherContent }: ProjectPageProps) => {
               <div className="content-details">
                 <section className="content-section">
                   <Link href="/" className="back-link">← Back to home</Link>
-                  <span className="card-type">{project.type}</span>
+                  <p className={`card-type ${project.type === 'Job' ? 'card-type--job' : project.type === 'Project' ? 'card-type--project' : ''}`}>{project.type}</p>
                   <h2 className="content-section-title">{project.title}</h2>
                   <p>{project.content}</p>
                 </section>
@@ -54,14 +57,20 @@ const ProjectPage = ({ project, otherContent }: ProjectPageProps) => {
                   <h2>Read More</h2>
                   <div className="content-grid">
                     {otherContent.map((item) => (
-                      <div className="card" key={item.id}>
-                        <span className="card-type">{item.type}</span>
-                        <h3>{item.title}</h3>
-                        <p>{item.description}</p>
-                        <Link href={item.link} className="card-link">
-                          Details
-                        </Link>
-                      </div>
+                      <Link href={item.link} key={item.id} className="card-link-wrapper">
+                        <div className={`card ${item.type === 'Job' ? 'card--job' : item.type === 'Project' ? 'card--project' : ''}`}>
+                          <span className={`card-type ${item.type === 'Job' ? 'card-type--job' : item.type === 'Project' ? 'card-type--project' : ''}`}>{item.type}</span>
+                          <h3>{item.title}</h3>
+                          <p>{item.description}</p>
+                          {item.tags && (
+                            <div className="card-tags-container">
+                              {item.tags.map((tag) => (
+                                <span key={tag} className="card-tag">{tag}</span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </Link>
                     ))}
                   </div>
                 </section>
@@ -75,7 +84,7 @@ const ProjectPage = ({ project, otherContent }: ProjectPageProps) => {
 };
 
 export const getStaticPaths: GetStaticPaths = async () => {
-  const projects = contentData.filter(item => item.type === 'Project');
+  const projects = contentData.filter(item => item.type === 'Project' || item.type === 'Job');
   const paths = projects.map(project => ({
     params: { id: project.id },
   }));

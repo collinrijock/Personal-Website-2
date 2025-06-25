@@ -39,14 +39,20 @@ export default function Home() {
             <div className="scroll__content">
               <div className="content-grid">
                 {contentData.map((item, index) => (
-                  <div className="card" key={index}>
-                    <span className="card-type">{item.type}</span>
-                    <h3>{item.title}</h3>
-                    <p>{item.description}</p>
-                    <Link href={item.type === 'Project' ? `/projects/${item.id}` : `/essays/${item.id}`} className="card-link">
-                      Details
-                    </Link>
-                  </div>
+                  <Link href={item.link} key={index} className="card-link-wrapper">
+                    <div className={`card ${item.type === 'Job' ? 'card--job' : item.type === 'Project' ? 'card--project' : ''}`}>
+                      <span className={`card-type ${item.type === 'Job' ? 'card-type--job' : item.type === 'Project' ? 'card-type--project' : ''}`}>{item.type}</span>
+                      <h3>{item.title}</h3>
+                      <p>{item.description}</p>
+                      {item.tags && (
+                        <div className="card-tags-container">
+                          {item.tags.map((tag) => (
+                            <span key={tag} className="card-tag">{tag}</span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </Link>
                 ))}
               </div>
             </div>
