@@ -93,10 +93,10 @@ export const getStaticPaths: GetStaticPaths = async () => {
 };
 
 export const getStaticProps: GetStaticProps = async (context) => {
-  const { params } = context;
-  const essay = contentData.find(item => item.id === params.id);
+  const { params } = context || {};
+  const essay = contentData.find(item => item.id === params?.id);
   const otherContent = contentData
-    .filter(item => item.id !== params.id)
+    .filter(item => item.id !== params?.id)
     .sort(() => 0.5 - Math.random())
     .slice(0, 3);
 
