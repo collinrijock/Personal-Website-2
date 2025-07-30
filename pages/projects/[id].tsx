@@ -32,7 +32,7 @@ const ProjectPage = ({ project, otherContent }: ProjectPageProps) => {
         <link rel="icon" href="/favicon.ico" />
       </Head>
       <main>
-        <NodxWaveCanvas />
+        <NodxWaveCanvas pageType={project.type} />
         <div className="frame">
           <div className="frame__title-wrap">
             <h1 className="frame__title"><Link href="/">Collin Rijock</Link></h1>

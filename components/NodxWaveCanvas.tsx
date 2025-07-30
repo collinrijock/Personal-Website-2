@@ -413,7 +413,7 @@ vec3 displace(vec3 pos) {
 	pos.x * u_noise_scale.x + u_noise_translate_speed * u_time,
 	pos.z * u_noise_scale.y,
 	u_time * u_noise_speed
-	), vec3(10.0), 0.0, g);
+	), vec3(0.0), 0.0, g);
 
 	return vec3(
 	pos.x,
@@ -462,6 +462,7 @@ varying vec2 v_reflected_normal;
 uniform float u_edge_reflection_max;
 uniform float u_edge_reflection_min;
 uniform sampler2D u_env_texture;
+uniform float u_master_opacity;
 
 void main() {
 	vec4 base = texture2D(
@@ -484,6 +485,7 @@ void main() {
 	)
 	);
 	gl_FragColor = base;
+	gl_FragColor.a *= u_master_opacity;
 }
 `;
 
@@ -826,6 +828,7 @@ uniform vec3 u_gradient_noise_speed;
 uniform vec2 u_gradient_grain_scale;
 uniform vec2 u_gradient_grain_offset;
 uniform float u_time;
+uniform vec3 u_primary_color;
 
 void main() {
 	float grain_offset = snoise(
@@ -847,7 +850,9 @@ void main() {
 	n = mix(u_gradient_ramp_min, u_gradient_ramp_max, n);
 
 	vec4 texColor = texture(u_gradient_ramp, vec2(n, 0.0));
-	gl_FragColor = vec4(texColor.rgb, 1.0);
+	float mix_factor = smoothstep(0.5, 1.0, texColor.r);
+	vec3 final_color = mix(texColor.rgb, u_primary_color, mix_factor);
+	gl_FragColor = vec4(final_color, 1.0);
 }
 `;
 
@@ -856,7 +861,7 @@ const mapRange = (value: number, inMin: number, inMax: number, outMin: number, o
 	return (value - inMin) * (outMax - outMin) / (inMax - inMin) + outMin;
 };
 
-export const NodxWaveCanvas: React.FC = () => {
+export const NodxWaveCanvas: React.FC<{ pageType?: string }> = ({ pageType = 'Project' }) => {
 	const canvasRef = useRef<HTMLCanvasElement>(null);
 	const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
 	const sceneRef = useRef<THREE.Scene | null>(null);
@@ -882,9 +887,20 @@ export const NodxWaveCanvas: React.FC = () => {
 		return () => window.removeEventListener('resize', onResize);
 	}, []);
 
+	useEffect(() => {
+		const colorMap: { [key: string]: THREE.Color } = {
+			'Essay': new THREE.Color('#dd51b1'),
+			'Project': new THREE.Color('#a78bfa'),
+			'Job': new THREE.Color('#60a5fa'),
+		};
+		if (pageType && colorMap[pageType] && uniformsRef.current.u_primary_color) {
+			uniformsRef.current.u_primary_color.value.set(colorMap[pageType]);
+		}
+	}, [pageType]);
+
 	const startingNoiseAmp = 1;
 	const endingNoiseAmp = 1.3;
-	const vertexDensity = 40;
+	const vertexDensity = 20; // Halved for performance
 	const width = 8;
 	const widthSegments = width * vertexDensity;
 	const heightSegments = height * vertexDensity;
@@ -893,6 +909,7 @@ export const NodxWaveCanvas: React.FC = () => {
 	const quartCircum = halfCircum / 2;
 
 	const uniformsRef = useRef({
+		u_master_opacity: { value: 0.0 },
 		u_time: { value: 0 },
 		u_noise_amp: { value: startingNoiseAmp },
 		u_noise_speed: { value: 0.03 },
@@ -902,6 +919,7 @@ export const NodxWaveCanvas: React.FC = () => {
 		u_offset: { value: 0.05 },
 		u_edge_reflection_min: { value: 0 },
 		u_edge_reflection_max: { value: 1 },
+		u_primary_color: { value: new THREE.Color('#a78bfa') },
 		u_gradient_ramp: { value: null as THREE.Texture | null },
 		u_gradient_ramp_min: { value: 0.5 },
 		u_gradient_ramp_max: { value: -0.3 },
@@ -958,6 +976,7 @@ export const NodxWaveCanvas: React.FC = () => {
 			const easedProgress = progress * (2 - progress);
 
 			if (uniformsRef.current) {
+				uniformsRef.current.u_master_opacity.value = easedProgress;
 				uniformsRef.current.u_noise_amp.value = lerp(startingNoiseAmp, endingNoiseAmp, easedProgress);
 				uniformsRef.current.u_noise_scale.value.y = lerp(0.15, 0.34, easedProgress);
 				uniformsRef.current.u_noise_scale.value.x = lerp(0.05, 0.2, easedProgress);
@@ -980,7 +999,7 @@ export const NodxWaveCanvas: React.FC = () => {
 			antialias: true,
 			alpha: true, // Enable transparency
 		});
-		renderer.setPixelRatio(window.devicePixelRatio);
+		renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5)); // Clamp for performance
 		renderer.setSize(currentCanvas.clientWidth, currentCanvas.clientHeight);
 		renderer.setClearColor(0xffffff, 0); // White with 0 opacity
 		rendererRef.current = renderer;
@@ -1034,7 +1053,7 @@ export const NodxWaveCanvas: React.FC = () => {
 		gradientSceneRef.current = gradientScene;
 		gradientScene.add(gradientMesh);
 
-		const gradientRenderTarget = new THREE.WebGLRenderTarget(1000, 1000, {
+		const gradientRenderTarget = new THREE.WebGLRenderTarget(512, 512, {
 			wrapS: THREE.ClampToEdgeWrapping,
 			wrapT: THREE.ClampToEdgeWrapping,
 			minFilter: THREE.LinearFilter,
@@ -1053,6 +1072,7 @@ export const NodxWaveCanvas: React.FC = () => {
 		const material = new THREE.ShaderMaterial({
 			vertexShader: VERTEX_SHADER,
 			fragmentShader: FRAGMENT_SHADER,
+			transparent: true,
 			uniforms: {
 				...uniformsRef.current,
 				u_env_texture: { value: gradientRenderTarget.texture },
