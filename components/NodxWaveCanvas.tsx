@@ -932,8 +932,11 @@ export const NodxWaveCanvas: React.FC<{ pageType?: string }> = ({ pageType = 'Pr
 	const foldPlane = useCallback((geometry: THREE.PlaneGeometry) => {
 		const positionAttribute = geometry.getAttribute('position');
 		for (let i = 0; i < positionAttribute.count; i += 1) {
+			// @ts-ignore
 			const x = positionAttribute.getX(i);
+			// @ts-ignore
 			const y = positionAttribute.getY(i);
+			// @ts-ignore
 			const z = positionAttribute.getZ(i);
 
 			const vec = new THREE.Vector3(x, y, z);
@@ -947,6 +950,7 @@ export const NodxWaveCanvas: React.FC<{ pageType?: string }> = ({ pageType = 'Pr
 				vec.z -= radius;
 				vec.x = -vec.x;
 			}
+			// @ts-ignore
 			positionAttribute.setXYZ(i, vec.x, vec.y, vec.z);
 		}
 		positionAttribute.needsUpdate = true;
@@ -956,11 +960,15 @@ export const NodxWaveCanvas: React.FC<{ pageType?: string }> = ({ pageType = 'Pr
 		const positionAttribute = geometry.getAttribute('position');
 		const euler = new THREE.Euler(Math.PI / 2, 0, Math.PI / 2);
 		for (let i = 0; i < positionAttribute.count; i += 1) {
+			// @ts-ignore
 			const x = positionAttribute.getX(i);
+			// @ts-ignore
 			const y = positionAttribute.getY(i);
+			// @ts-ignore
 			const z = positionAttribute.getZ(i);
 			const vec = new THREE.Vector3(x, y, z);
 			vec.applyEuler(euler);
+			// @ts-ignore
 			positionAttribute.setXYZ(i, vec.x, vec.y, vec.z);
 		}
 		positionAttribute.needsUpdate = true;
