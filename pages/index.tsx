@@ -105,13 +105,12 @@ export const getStaticProps: GetStaticProps<HomeProps> = async () => {
   // Convert blog posts to content items
   const dynamicContent = blogPosts.map(blogPostToContentItem);
 
-  // Merge static content with dynamic blog posts
-  // Dynamic content comes first, then static
-  const allContent = [...dynamicContent, ...staticContentData];
+  // Use API content if available, otherwise fall back to static content
+  const contentData = dynamicContent.length > 0 ? dynamicContent : staticContentData;
 
   return {
     props: {
-      contentData: allContent,
+      contentData,
     },
     // Revalidate every 60 seconds (ISR)
     revalidate: 60,
