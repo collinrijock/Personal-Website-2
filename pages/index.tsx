@@ -2,9 +2,15 @@ import Head from 'next/head';
 import { useEffect, useState } from 'react';
 import ScrollStage from '../lib/sos/ScrollStage';
 import Link from 'next/link';
-import { contentData } from '../lib/content';
+import { GetStaticProps } from 'next';
+import { staticContentData, ContentItem } from '../lib/content';
+import { fetchBlogPosts, blogPostToContentItem } from '../lib/api';
 
-export default function Home() {
+interface HomeProps {
+  contentData: ContentItem[];
+}
+
+export default function Home({ contentData }: HomeProps) {
   const [isBlipVisible, setIsBlipVisible] = useState(true);
 
   useEffect(() => {
@@ -16,7 +22,7 @@ export default function Home() {
       const stage = new ScrollStage();
       // The ScrollStage class will handle removing the 'loading' class on window.load
     }
-    
+
     return () => {
       document.body.classList.remove('home-background');
     };
@@ -64,7 +70,7 @@ export default function Home() {
         <div className="content">
           <div className="scroll__stage">
             <div className="scroll__content">
-              
+
               <div className="content-grid">
                 {contentData.map((item, index) => (
                   <Link href={item.link} key={index} className="card-link-wrapper">
@@ -91,3 +97,23 @@ export default function Home() {
     </>
   );
 }
+
+export const getStaticProps: GetStaticProps<HomeProps> = async () => {
+  // Fetch blog posts from Super Charles API
+  const blogPosts = await fetchBlogPosts();
+
+  // Convert blog posts to content items
+  const dynamicContent = blogPosts.map(blogPostToContentItem);
+
+  // Merge static content with dynamic blog posts
+  // Dynamic content comes first, then static
+  const allContent = [...dynamicContent, ...staticContentData];
+
+  return {
+    props: {
+      contentData: allContent,
+    },
+    // Revalidate every 60 seconds (ISR)
+    revalidate: 60,
+  };
+};
