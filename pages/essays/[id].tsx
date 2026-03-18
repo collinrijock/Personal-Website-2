@@ -5,6 +5,8 @@ import { staticContentData, ContentItem } from '../../lib/content';
 import { fetchBlogPosts, fetchBlogPostBySlug, blogPostToContentItem } from '../../lib/api';
 import { NodxWaveCanvas } from '../../components/NodxWaveCanvas';
 
+const SITE_URL = 'https://collinrijock.com';
+
 interface EssayPageProps {
   essay: ContentItem | null;
   otherContent: ContentItem[];
@@ -25,6 +27,7 @@ const EssayPage = ({ essay, otherContent }: EssayPageProps) => {
               <h1 className="frame__title"><Link href="/">Collin Rijock</Link></h1>
             </div>
             <nav className="frame__links">
+              <a href="https://linkedin.com/in/collinrijock" target="_blank" rel="noopener noreferrer">LinkedIn</a>
               <a href="https://github.com/collinrijock" target="_blank" rel="noopener noreferrer">GitHub</a>
               <a href="https://x.com/CollinRijock" target="_blank" rel="noopener noreferrer">Twitter</a>
               <a href="mailto:collinrijock@gmail.com">Contact</a>
@@ -48,12 +51,56 @@ const EssayPage = ({ essay, otherContent }: EssayPageProps) => {
     );
   }
 
+  const canonicalUrl = `${SITE_URL}/essays/${essay.id}`;
+
+  const articleJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Article',
+    headline: essay.title,
+    description: essay.description,
+    url: canonicalUrl,
+    author: {
+      '@type': 'Person',
+      name: 'Collin Rijock',
+      url: SITE_URL,
+    },
+    publisher: {
+      '@type': 'Person',
+      name: 'Collin Rijock',
+      url: SITE_URL,
+    },
+  };
+
   return (
     <>
       <Head>
         <title>{`${essay.title} | Collin Rijock`}</title>
         <meta name="description" content={essay.description} />
+        <link rel="canonical" href={canonicalUrl} />
         <link rel="icon" href="/favicon.ico" />
+
+        {/* Open Graph */}
+        <meta property="og:type" content="article" />
+        <meta property="og:url" content={canonicalUrl} />
+        <meta property="og:title" content={`${essay.title} | Collin Rijock`} />
+        <meta property="og:description" content={essay.description} />
+        <meta property="og:image" content={`${SITE_URL}/og-image.png`} />
+        <meta property="og:site_name" content="Collin Rijock" />
+        <meta property="og:locale" content="en_US" />
+
+        {/* Twitter Card */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:site" content="@CollinRijock" />
+        <meta name="twitter:creator" content="@CollinRijock" />
+        <meta name="twitter:title" content={`${essay.title} | Collin Rijock`} />
+        <meta name="twitter:description" content={essay.description} />
+        <meta name="twitter:image" content={`${SITE_URL}/og-image.png`} />
+
+        {/* JSON-LD */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(articleJsonLd) }}
+        />
       </Head>
       <main>
         <NodxWaveCanvas pageType="Essay" />
@@ -62,6 +109,7 @@ const EssayPage = ({ essay, otherContent }: EssayPageProps) => {
             <h1 className="frame__title"><Link href="/">Collin Rijock</Link></h1>
           </div>
           <nav className="frame__links">
+            <a href="https://linkedin.com/in/collinrijock" target="_blank" rel="noopener noreferrer">LinkedIn</a>
             <a href="https://github.com/collinrijock" target="_blank" rel="noopener noreferrer">GitHub</a>
             <a href="https://x.com/CollinRijock" target="_blank" rel="noopener noreferrer">Twitter</a>
             <a href="mailto:collinrijock@gmail.com">Contact</a>
@@ -108,13 +156,11 @@ const EssayPage = ({ essay, otherContent }: EssayPageProps) => {
 };
 
 export const getStaticPaths: GetStaticPaths = async () => {
-  // Get all static essay IDs
   const staticEssays = staticContentData.filter(item => item.type === 'Essay');
   const staticPaths = staticEssays.map(essay => ({
     params: { id: essay.id },
   }));
 
-  // Get all dynamic blog post slugs
   const blogPosts = await fetchBlogPosts();
   const dynamicPaths = blogPosts
     .filter(post => post.type === 'ESSAY')
@@ -124,7 +170,6 @@ export const getStaticPaths: GetStaticPaths = async () => {
 
   return {
     paths: [...staticPaths, ...dynamicPaths],
-    // Enable fallback for new posts
     fallback: 'blocking',
   };
 };
@@ -133,10 +178,8 @@ export const getStaticProps: GetStaticProps<EssayPageProps> = async (context) =>
   const { params } = context || {};
   const id = params?.id as string;
 
-  // First, try to find in static content
   let essay = staticContentData.find(item => item.id === id && item.type === 'Essay');
 
-  // If not found in static, fetch from API
   if (!essay) {
     const blogPost = await fetchBlogPostBySlug(id);
     if (blogPost && blogPost.type === 'ESSAY') {
@@ -144,7 +187,6 @@ export const getStaticProps: GetStaticProps<EssayPageProps> = async (context) =>
     }
   }
 
-  // Get other content for "Read More" section
   const blogPosts = await fetchBlogPosts();
   const dynamicContent = blogPosts.map(blogPostToContentItem);
   const allContent = [...dynamicContent, ...staticContentData];
@@ -154,7 +196,6 @@ export const getStaticProps: GetStaticProps<EssayPageProps> = async (context) =>
     .sort(() => 0.5 - Math.random())
     .slice(0, 3);
 
-  // Return 404 if essay not found
   if (!essay) {
     return {
       props: {
@@ -170,7 +211,6 @@ export const getStaticProps: GetStaticProps<EssayPageProps> = async (context) =>
       essay,
       otherContent,
     },
-    // Revalidate every 60 seconds
     revalidate: 60,
   };
 };

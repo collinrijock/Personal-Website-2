@@ -330,7 +330,7 @@ canvas.webgl {
   gap: 4rem;
   padding: 12rem 8rem;
   width: 100%;
-  padding-top: 45rem;
+  padding-top: 65rem;
 }
 
 @media (min-width: 64em) {
@@ -346,7 +346,8 @@ canvas.webgl {
     padding: 2rem;
   }
   .content-grid {
-    padding: 10rem 2rem;
+    padding: 4rem 2rem;
+    padding-top: 55rem;
     grid-template-columns: 1fr;
   }
 }
