@@ -5,19 +5,18 @@ import Link from 'next/link';
 import { GetStaticProps } from 'next';
 import { staticContentData, ContentItem } from '../lib/content';
 import { fetchBlogPosts, blogPostToContentItem } from '../lib/api';
-
-const SITE_URL = 'https://collinrijock.com';
+import { profile } from '../lib/profile';
 
 const personJsonLd = {
   '@context': 'https://schema.org',
   '@type': 'Person',
-  name: 'Collin Rijock',
-  url: SITE_URL,
-  jobTitle: 'Lead Software Engineer',
+  name: profile.name,
+  url: profile.siteUrl,
+  jobTitle: profile.title,
   worksFor: {
     '@type': 'Organization',
-    name: 'Exowatt',
-    url: 'https://exowatt.com',
+    name: profile.company,
+    url: profile.companyUrl,
   },
   alumniOf: {
     '@type': 'CollegeOrUniversity',
@@ -29,13 +28,8 @@ const personJsonLd = {
     addressRegion: 'FL',
     addressCountry: 'US',
   },
-  sameAs: [
-    'https://github.com/collinrijock',
-    'https://x.com/CollinRijock',
-    'https://linkedin.com/in/collinrijock',
-  ],
-  description:
-    'Lead Software Engineer at Exowatt. Founding engineer, full-stack builder, and explorer based in Miami.',
+  sameAs: [profile.links.github, profile.links.twitter, profile.links.linkedin],
+  description: profile.metaDescription,
 };
 
 interface HomeProps {
@@ -61,45 +55,33 @@ export default function Home({ contentData }: HomeProps) {
   return (
     <>
       <Head>
-        <title>Collin Rijock — Engineer. Founder. Explorer.</title>
-        <meta
-          name="description"
-          content="Lead Software Engineer at Exowatt. Founding engineer and full-stack builder based in Miami — previously BuildrFi (AI fintech) and Lula (Series B insurtech, $2M→$30M ARR)."
-        />
+        <title>{profile.name}</title>
+        <meta name="description" content={profile.metaDescription} />
         <meta
           name="keywords"
           content="collin rijock, software engineer, founding engineer, full-stack, react, typescript, node.js, miami, exowatt, fintech, startups, essays"
         />
-        <meta name="author" content="Collin Rijock" />
-        <link rel="canonical" href={SITE_URL} />
+        <meta name="author" content={profile.name} />
+        <link rel="canonical" href={profile.siteUrl} />
         <link rel="icon" href="/favicon.ico" />
 
-        {/* Open Graph */}
         <meta property="og:type" content="website" />
-        <meta property="og:url" content={SITE_URL} />
-        <meta property="og:title" content="Collin Rijock — Engineer. Founder. Explorer." />
-        <meta
-          property="og:description"
-          content="Lead Software Engineer at Exowatt. Founding engineer and full-stack builder based in Miami — previously BuildrFi (AI fintech) and Lula (Series B insurtech, $2M→$30M ARR)."
-        />
-        <meta property="og:image" content={`${SITE_URL}/og-image.png`} />
+        <meta property="og:url" content={profile.siteUrl} />
+        <meta property="og:title" content={profile.name} />
+        <meta property="og:description" content={profile.metaDescription} />
+        <meta property="og:image" content={`${profile.siteUrl}/og-image.png`} />
         <meta property="og:image:width" content="1200" />
         <meta property="og:image:height" content="630" />
-        <meta property="og:site_name" content="Collin Rijock" />
+        <meta property="og:site_name" content={profile.name} />
         <meta property="og:locale" content="en_US" />
 
-        {/* Twitter Card */}
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:site" content="@CollinRijock" />
         <meta name="twitter:creator" content="@CollinRijock" />
-        <meta name="twitter:title" content="Collin Rijock — Engineer. Founder. Explorer." />
-        <meta
-          name="twitter:description"
-          content="Lead Software Engineer at Exowatt. Founding engineer and full-stack builder based in Miami."
-        />
-        <meta name="twitter:image" content={`${SITE_URL}/og-image.png`} />
+        <meta name="twitter:title" content={profile.name} />
+        <meta name="twitter:description" content={profile.metaDescription} />
+        <meta name="twitter:image" content={`${profile.siteUrl}/og-image.png`} />
 
-        {/* JSON-LD */}
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(personJsonLd) }}
@@ -108,14 +90,14 @@ export default function Home({ contentData }: HomeProps) {
       <main>
         <div className="frame">
           <div className="frame__title-wrap">
-            <h1 className="frame__title">Collin Rijock</h1>
-            <p className="frame__tagline">Engineer · Founder · Explorer</p>
+            <h1 className="frame__title">{profile.name}</h1>
+            <p className="frame__tagline">{profile.tagline}</p>
           </div>
           <nav className="frame__links">
-            <a href="https://linkedin.com/in/collinrijock" target="_blank" rel="noopener noreferrer">LinkedIn</a>
-            <a href="https://github.com/collinrijock" target="_blank" rel="noopener noreferrer">GitHub</a>
-            <a href="https://x.com/CollinRijock" target="_blank" rel="noopener noreferrer">Twitter</a>
-            <a href="mailto:collinrijock@gmail.com">Contact</a>
+            <a href={profile.links.linkedin} target="_blank" rel="noopener noreferrer">LinkedIn</a>
+            <a href={profile.links.github} target="_blank" rel="noopener noreferrer">GitHub</a>
+            <a href={profile.links.twitter} target="_blank" rel="noopener noreferrer">Twitter</a>
+            <a href={`mailto:${profile.email}`}>Contact</a>
           </nav>
           {isBlipVisible && (
             <div className="frame__interactive-blip">
@@ -142,12 +124,7 @@ export default function Home({ contentData }: HomeProps) {
 
               <div className="bio-section">
                 <div className="bio-text">
-                  <p>
-                    Explorer at heart, engineer by trade. I&apos;ve spent my career as a founding engineer —
-                    scaling Lula from $2M to $30M ARR, building BuildrFi&apos;s AI lending platform from zero
-                    to live MVP, and shipping Exowatt&apos;s Lightspeed platform solo from infra to UI. I write
-                    about technology, startups, and ideas.
-                  </p>
+                  <p>{profile.bio}</p>
                 </div>
               </div>
 

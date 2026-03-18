@@ -3,8 +3,7 @@ import Head from 'next/head';
 import Link from 'next/link';
 import { contentData } from '../../lib/content';
 import { NodxWaveCanvas } from '../../components/NodxWaveCanvas';
-
-const SITE_URL = 'https://collinrijock.com';
+import { profile } from '../../lib/profile';
 
 interface ContentItem {
   id: string;
@@ -26,44 +25,42 @@ const ProjectPage = ({ project, otherContent }: ProjectPageProps) => {
     return <div>Project not found.</div>;
   }
 
-  const canonicalUrl = `${SITE_URL}/projects/${project.id}`;
+  const canonicalUrl = `${profile.siteUrl}/projects/${project.id}`;
 
   return (
     <>
       <Head>
-        <title>{`${project.title} | Collin Rijock`}</title>
+        <title>{`${project.title} | ${profile.name}`}</title>
         <meta name="description" content={project.description} />
         <link rel="canonical" href={canonicalUrl} />
         <link rel="icon" href="/favicon.ico" />
 
-        {/* Open Graph */}
         <meta property="og:type" content="website" />
         <meta property="og:url" content={canonicalUrl} />
-        <meta property="og:title" content={`${project.title} | Collin Rijock`} />
+        <meta property="og:title" content={`${project.title} | ${profile.name}`} />
         <meta property="og:description" content={project.description} />
-        <meta property="og:image" content={`${SITE_URL}/og-image.png`} />
-        <meta property="og:site_name" content="Collin Rijock" />
+        <meta property="og:image" content={`${profile.siteUrl}/og-image.png`} />
+        <meta property="og:site_name" content={profile.name} />
         <meta property="og:locale" content="en_US" />
 
-        {/* Twitter Card */}
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:site" content="@CollinRijock" />
         <meta name="twitter:creator" content="@CollinRijock" />
-        <meta name="twitter:title" content={`${project.title} | Collin Rijock`} />
+        <meta name="twitter:title" content={`${project.title} | ${profile.name}`} />
         <meta name="twitter:description" content={project.description} />
-        <meta name="twitter:image" content={`${SITE_URL}/og-image.png`} />
+        <meta name="twitter:image" content={`${profile.siteUrl}/og-image.png`} />
       </Head>
       <main>
         <NodxWaveCanvas pageType={project.type} />
         <div className="frame">
           <div className="frame__title-wrap">
-            <h1 className="frame__title"><Link href="/">Collin Rijock</Link></h1>
+            <h1 className="frame__title"><Link href="/">{profile.name}</Link></h1>
           </div>
           <nav className="frame__links">
-            <a href="https://linkedin.com/in/collinrijock" target="_blank" rel="noopener noreferrer">LinkedIn</a>
-            <a href="https://github.com/collinrijock" target="_blank" rel="noopener noreferrer">GitHub</a>
-            <a href="https://x.com/CollinRijock" target="_blank" rel="noopener noreferrer">Twitter</a>
-            <a href="mailto:collinrijock@gmail.com">Contact</a>
+            <a href={profile.links.linkedin} target="_blank" rel="noopener noreferrer">LinkedIn</a>
+            <a href={profile.links.github} target="_blank" rel="noopener noreferrer">GitHub</a>
+            <a href={profile.links.twitter} target="_blank" rel="noopener noreferrer">Twitter</a>
+            <a href={`mailto:${profile.email}`}>Contact</a>
           </nav>
         </div>
         <div className="content">

@@ -4,12 +4,27 @@ import Link from 'next/link';
 import { staticContentData, ContentItem } from '../../lib/content';
 import { fetchBlogPosts, fetchBlogPostBySlug, blogPostToContentItem } from '../../lib/api';
 import { NodxWaveCanvas } from '../../components/NodxWaveCanvas';
-
-const SITE_URL = 'https://collinrijock.com';
+import { profile } from '../../lib/profile';
 
 interface EssayPageProps {
   essay: ContentItem | null;
   otherContent: ContentItem[];
+}
+
+function NavFrame() {
+  return (
+    <div className="frame">
+      <div className="frame__title-wrap">
+        <h1 className="frame__title"><Link href="/">{profile.name}</Link></h1>
+      </div>
+      <nav className="frame__links">
+        <a href={profile.links.linkedin} target="_blank" rel="noopener noreferrer">LinkedIn</a>
+        <a href={profile.links.github} target="_blank" rel="noopener noreferrer">GitHub</a>
+        <a href={profile.links.twitter} target="_blank" rel="noopener noreferrer">Twitter</a>
+        <a href={`mailto:${profile.email}`}>Contact</a>
+      </nav>
+    </div>
+  );
 }
 
 const EssayPage = ({ essay, otherContent }: EssayPageProps) => {
@@ -17,22 +32,12 @@ const EssayPage = ({ essay, otherContent }: EssayPageProps) => {
     return (
       <>
         <Head>
-          <title>Essay Not Found | Collin Rijock</title>
+          <title>Essay Not Found | {profile.name}</title>
           <link rel="icon" href="/favicon.ico" />
         </Head>
         <main>
           <NodxWaveCanvas pageType="Essay" />
-          <div className="frame">
-            <div className="frame__title-wrap">
-              <h1 className="frame__title"><Link href="/">Collin Rijock</Link></h1>
-            </div>
-            <nav className="frame__links">
-              <a href="https://linkedin.com/in/collinrijock" target="_blank" rel="noopener noreferrer">LinkedIn</a>
-              <a href="https://github.com/collinrijock" target="_blank" rel="noopener noreferrer">GitHub</a>
-              <a href="https://x.com/CollinRijock" target="_blank" rel="noopener noreferrer">Twitter</a>
-              <a href="mailto:collinrijock@gmail.com">Contact</a>
-            </nav>
-          </div>
+          <NavFrame />
           <div className="content">
             <div className="scroll__stage">
               <div className="scroll__content">
@@ -51,7 +56,7 @@ const EssayPage = ({ essay, otherContent }: EssayPageProps) => {
     );
   }
 
-  const canonicalUrl = `${SITE_URL}/essays/${essay.id}`;
+  const canonicalUrl = `${profile.siteUrl}/essays/${essay.id}`;
 
   const articleJsonLd = {
     '@context': 'https://schema.org',
@@ -61,42 +66,39 @@ const EssayPage = ({ essay, otherContent }: EssayPageProps) => {
     url: canonicalUrl,
     author: {
       '@type': 'Person',
-      name: 'Collin Rijock',
-      url: SITE_URL,
+      name: profile.name,
+      url: profile.siteUrl,
     },
     publisher: {
       '@type': 'Person',
-      name: 'Collin Rijock',
-      url: SITE_URL,
+      name: profile.name,
+      url: profile.siteUrl,
     },
   };
 
   return (
     <>
       <Head>
-        <title>{`${essay.title} | Collin Rijock`}</title>
+        <title>{`${essay.title} | ${profile.name}`}</title>
         <meta name="description" content={essay.description} />
         <link rel="canonical" href={canonicalUrl} />
         <link rel="icon" href="/favicon.ico" />
 
-        {/* Open Graph */}
         <meta property="og:type" content="article" />
         <meta property="og:url" content={canonicalUrl} />
-        <meta property="og:title" content={`${essay.title} | Collin Rijock`} />
+        <meta property="og:title" content={`${essay.title} | ${profile.name}`} />
         <meta property="og:description" content={essay.description} />
-        <meta property="og:image" content={`${SITE_URL}/og-image.png`} />
-        <meta property="og:site_name" content="Collin Rijock" />
+        <meta property="og:image" content={`${profile.siteUrl}/og-image.png`} />
+        <meta property="og:site_name" content={profile.name} />
         <meta property="og:locale" content="en_US" />
 
-        {/* Twitter Card */}
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:site" content="@CollinRijock" />
         <meta name="twitter:creator" content="@CollinRijock" />
-        <meta name="twitter:title" content={`${essay.title} | Collin Rijock`} />
+        <meta name="twitter:title" content={`${essay.title} | ${profile.name}`} />
         <meta name="twitter:description" content={essay.description} />
-        <meta name="twitter:image" content={`${SITE_URL}/og-image.png`} />
+        <meta name="twitter:image" content={`${profile.siteUrl}/og-image.png`} />
 
-        {/* JSON-LD */}
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(articleJsonLd) }}
@@ -104,17 +106,7 @@ const EssayPage = ({ essay, otherContent }: EssayPageProps) => {
       </Head>
       <main>
         <NodxWaveCanvas pageType="Essay" />
-        <div className="frame">
-          <div className="frame__title-wrap">
-            <h1 className="frame__title"><Link href="/">Collin Rijock</Link></h1>
-          </div>
-          <nav className="frame__links">
-            <a href="https://linkedin.com/in/collinrijock" target="_blank" rel="noopener noreferrer">LinkedIn</a>
-            <a href="https://github.com/collinrijock" target="_blank" rel="noopener noreferrer">GitHub</a>
-            <a href="https://x.com/CollinRijock" target="_blank" rel="noopener noreferrer">Twitter</a>
-            <a href="mailto:collinrijock@gmail.com">Contact</a>
-          </nav>
-        </div>
+        <NavFrame />
         <div className="content">
           <div className="scroll__stage">
             <div className="scroll__content">
