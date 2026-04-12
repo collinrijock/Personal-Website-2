@@ -1,8 +1,8 @@
-import '@/styles/globals.css'
-import type { AppProps } from 'next/app'
-import Script from 'next/script'
+import "@/styles/globals.css";
+import type { AppProps } from "next/app";
+import Script from "next/script";
 
-const GA_MEASUREMENT_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID
+const GA_MEASUREMENT_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
 
 export default function App({ Component, pageProps }: AppProps) {
   return (
@@ -25,5 +25,5 @@ export default function App({ Component, pageProps }: AppProps) {
       )}
       <Component {...pageProps} />
     </>
-  )
+  );
 }

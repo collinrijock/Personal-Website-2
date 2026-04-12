@@ -1,5 +1,5 @@
-import React, { useRef, useEffect, useState, useCallback } from 'react';
-import * as THREE from 'three';
+import React, { useRef, useEffect, useState, useCallback } from "react";
+import * as THREE from "three";
 
 // Vertex Shader (extracted from 'C' in the provided compiled JS)
 const VERTEX_SHADER = `
@@ -858,189 +858,204 @@ void main() {
 
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 const mapRange = (value: number, inMin: number, inMax: number, outMin: number, outMax: number) => {
-	return (value - inMin) * (outMax - outMin) / (inMax - inMin) + outMin;
+  return ((value - inMin) * (outMax - outMin)) / (inMax - inMin) + outMin;
 };
 
-export const NodxWaveCanvas: React.FC<{ pageType?: string }> = ({ pageType = 'Project' }) => {
-	const canvasRef = useRef<HTMLCanvasElement>(null);
-	const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
-	const sceneRef = useRef<THREE.Scene | null>(null);
-	const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
-	const clockRef = useRef<THREE.Clock | null>(null);
-	const mainMeshRef = useRef<THREE.Mesh | null>(null);
-	const gradientMeshRef = useRef<THREE.Mesh | null>(null);
-	const gradientSceneRef = useRef<THREE.Scene | null>(null);
-	const gradientRenderTargetRef = useRef<THREE.WebGLRenderTarget | null>(null);
-	const animationFrameId = useRef<number | null>(null);
+export const NodxWaveCanvas: React.FC<{ pageType?: string }> = ({ pageType = "Project" }) => {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
+  const sceneRef = useRef<THREE.Scene | null>(null);
+  const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
+  const clockRef = useRef<THREE.Clock | null>(null);
+  const mainMeshRef = useRef<THREE.Mesh | null>(null);
+  const gradientMeshRef = useRef<THREE.Mesh | null>(null);
+  const gradientSceneRef = useRef<THREE.Scene | null>(null);
+  const gradientRenderTargetRef = useRef<THREE.WebGLRenderTarget | null>(null);
+  const animationFrameId = useRef<number | null>(null);
 
-	const [isMobile, setIsMobile] = useState(false);
-	const [height, setHeight] = useState(10); // Default non-zero value
+  const [isMobile, setIsMobile] = useState(false);
+  const [height, setHeight] = useState(10); // Default non-zero value
 
-	useEffect(() => {
-		const onResize = () => {
-			const mobile = window.innerWidth <= 600;
-			setIsMobile(mobile);
-			setHeight(mobile ? window.innerWidth / 80 : window.innerWidth / 100);
-		};
-		onResize(); // Set initial values
-		window.addEventListener('resize', onResize);
-		return () => window.removeEventListener('resize', onResize);
-	}, []);
+  useEffect(() => {
+    const onResize = () => {
+      const mobile = window.innerWidth <= 600;
+      setIsMobile(mobile);
+      setHeight(mobile ? window.innerWidth / 80 : window.innerWidth / 100);
+    };
+    onResize(); // Set initial values
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
 
-	useEffect(() => {
-		const colorMap: { [key: string]: THREE.Color } = {
-			'Essay': new THREE.Color('#dd51b1'),
-			'Project': new THREE.Color('#a78bfa'),
-			'Job': new THREE.Color('#60a5fa'),
-		};
-		if (pageType && colorMap[pageType] && uniformsRef.current.u_primary_color) {
-			uniformsRef.current.u_primary_color.value.set(colorMap[pageType]);
-		}
-	}, [pageType]);
+  useEffect(() => {
+    const colorMap: { [key: string]: THREE.Color } = {
+      Essay: new THREE.Color("#dd51b1"),
+      Project: new THREE.Color("#a78bfa"),
+      Job: new THREE.Color("#60a5fa"),
+    };
+    if (pageType && colorMap[pageType] && uniformsRef.current.u_primary_color) {
+      uniformsRef.current.u_primary_color.value.set(colorMap[pageType]);
+    }
+  }, [pageType]);
 
-	const startingNoiseAmp = 1;
-	const endingNoiseAmp = 1.3;
-	const vertexDensity = 20; // Halved for performance
-	const width = 8;
-	const widthSegments = width * vertexDensity;
-	const heightSegments = height * vertexDensity;
-	const radius = 0.1;
-	const halfCircum = radius * Math.PI;
-	const quartCircum = halfCircum / 2;
+  const startingNoiseAmp = 1;
+  const endingNoiseAmp = 1.3;
+  const vertexDensity = 20; // Halved for performance
+  const width = 8;
+  const widthSegments = width * vertexDensity;
+  const heightSegments = height * vertexDensity;
+  const radius = 0.1;
+  const halfCircum = radius * Math.PI;
+  const quartCircum = halfCircum / 2;
 
-	const uniformsRef = useRef({
-		u_master_opacity: { value: 0.0 },
-		u_time: { value: 0 },
-		u_noise_amp: { value: startingNoiseAmp },
-		u_noise_speed: { value: 0.03 },
-		u_noise_translate_speed: { value: -0.05 },
-		u_noise_scale: { value: new THREE.Vector2(0.2, 0.45) },
-		u_incline: { value: new THREE.Vector3(0.2, 0, 0) },
-		u_offset: { value: 0.05 },
-		u_edge_reflection_min: { value: 0 },
-		u_edge_reflection_max: { value: 1 },
-		u_primary_color: { value: new THREE.Color('#a78bfa') },
-		u_gradient_ramp: { value: null as THREE.Texture | null },
-		u_gradient_ramp_min: { value: 0.5 },
-		u_gradient_ramp_max: { value: -0.3 },
-		u_gradient_scale: { value: new THREE.Vector3(0.15, 1, 1) },
-		u_gradient_noise_speed: { value: new THREE.Vector3(0.06, 0.05, 0) },
-		u_gradient_grain_scale: { value: new THREE.Vector2(1.5, 0) },
-		u_gradient_grain_offset: { value: new THREE.Vector2(0.07, 0) },
-	});
+  const uniformsRef = useRef({
+    u_master_opacity: { value: 0.0 },
+    u_time: { value: 0 },
+    u_noise_amp: { value: startingNoiseAmp },
+    u_noise_speed: { value: 0.03 },
+    u_noise_translate_speed: { value: -0.05 },
+    u_noise_scale: { value: new THREE.Vector2(0.2, 0.45) },
+    u_incline: { value: new THREE.Vector3(0.2, 0, 0) },
+    u_offset: { value: 0.05 },
+    u_edge_reflection_min: { value: 0 },
+    u_edge_reflection_max: { value: 1 },
+    u_primary_color: { value: new THREE.Color("#a78bfa") },
+    u_gradient_ramp: { value: null as THREE.Texture | null },
+    u_gradient_ramp_min: { value: 0.5 },
+    u_gradient_ramp_max: { value: -0.3 },
+    u_gradient_scale: { value: new THREE.Vector3(0.15, 1, 1) },
+    u_gradient_noise_speed: { value: new THREE.Vector3(0.06, 0.05, 0) },
+    u_gradient_grain_scale: { value: new THREE.Vector2(1.5, 0) },
+    u_gradient_grain_offset: { value: new THREE.Vector2(0.07, 0) },
+  });
 
-	const foldPlane = useCallback((geometry: THREE.PlaneGeometry) => {
-		const positionAttribute = geometry.getAttribute('position');
-		for (let i = 0; i < positionAttribute.count; i += 1) {
-			// @ts-ignore
-			const x = positionAttribute.getX(i);
-			// @ts-ignore
-			const y = positionAttribute.getY(i);
-			// @ts-ignore
-			const z = positionAttribute.getZ(i);
+  const foldPlane = useCallback(
+    (geometry: THREE.PlaneGeometry) => {
+      const positionAttribute = geometry.getAttribute("position");
+      for (let i = 0; i < positionAttribute.count; i += 1) {
+        // @ts-ignore
+        const x = positionAttribute.getX(i);
+        // @ts-ignore
+        const y = positionAttribute.getY(i);
+        // @ts-ignore
+        const z = positionAttribute.getZ(i);
 
-			const vec = new THREE.Vector3(x, y, z);
+        const vec = new THREE.Vector3(x, y, z);
 
-			if (vec.x < -quartCircum) {
-				vec.z += radius;
-			} else if (vec.x < quartCircum) {
-				vec.z = Math.cos(mapRange(vec.x, -quartCircum, quartCircum, 0, Math.PI)) * radius;
-				vec.x = Math.cos(mapRange(vec.x, -quartCircum, quartCircum, -Math.PI / 2, Math.PI / 2)) * radius - quartCircum;
-			} else {
-				vec.z -= radius;
-				vec.x = -vec.x;
-			}
-			// @ts-ignore
-			positionAttribute.setXYZ(i, vec.x, vec.y, vec.z);
-		}
-		positionAttribute.needsUpdate = true;
-	}, [quartCircum, radius]);
+        if (vec.x < -quartCircum) {
+          vec.z += radius;
+        } else if (vec.x < quartCircum) {
+          vec.z = Math.cos(mapRange(vec.x, -quartCircum, quartCircum, 0, Math.PI)) * radius;
+          vec.x =
+            Math.cos(mapRange(vec.x, -quartCircum, quartCircum, -Math.PI / 2, Math.PI / 2)) *
+              radius -
+            quartCircum;
+        } else {
+          vec.z -= radius;
+          vec.x = -vec.x;
+        }
+        // @ts-ignore
+        positionAttribute.setXYZ(i, vec.x, vec.y, vec.z);
+      }
+      positionAttribute.needsUpdate = true;
+    },
+    [quartCircum, radius]
+  );
 
-	const transformPlane = useCallback((geometry: THREE.PlaneGeometry) => {
-		const positionAttribute = geometry.getAttribute('position');
-		const euler = new THREE.Euler(Math.PI / 2, 0, Math.PI / 2);
-		for (let i = 0; i < positionAttribute.count; i += 1) {
-			// @ts-ignore
-			const x = positionAttribute.getX(i);
-			// @ts-ignore
-			const y = positionAttribute.getY(i);
-			// @ts-ignore
-			const z = positionAttribute.getZ(i);
-			const vec = new THREE.Vector3(x, y, z);
-			vec.applyEuler(euler);
-			// @ts-ignore
-			positionAttribute.setXYZ(i, vec.x, vec.y, vec.z);
-		}
-		positionAttribute.needsUpdate = true;
-	}, []);
+  const transformPlane = useCallback((geometry: THREE.PlaneGeometry) => {
+    const positionAttribute = geometry.getAttribute("position");
+    const euler = new THREE.Euler(Math.PI / 2, 0, Math.PI / 2);
+    for (let i = 0; i < positionAttribute.count; i += 1) {
+      // @ts-ignore
+      const x = positionAttribute.getX(i);
+      // @ts-ignore
+      const y = positionAttribute.getY(i);
+      // @ts-ignore
+      const z = positionAttribute.getZ(i);
+      const vec = new THREE.Vector3(x, y, z);
+      vec.applyEuler(euler);
+      // @ts-ignore
+      positionAttribute.setXYZ(i, vec.x, vec.y, vec.z);
+    }
+    positionAttribute.needsUpdate = true;
+  }, []);
 
-	const animateIntro = useCallback((startTime: number) => {
-		const duration = 3000; // 3 seconds
-		const introAnimation = (currentTime: number) => {
-			const elapsed = currentTime - startTime;
-			const progress = Math.min(elapsed / duration, 1); // 0 to 1
+  const animateIntro = useCallback(
+    (startTime: number) => {
+      const duration = 3000; // 3 seconds
+      const introAnimation = (currentTime: number) => {
+        const elapsed = currentTime - startTime;
+        const progress = Math.min(elapsed / duration, 1); // 0 to 1
 
-			// Simple easing function (e.g., easeOutQuad)
-			const easedProgress = progress * (2 - progress);
+        // Simple easing function (e.g., easeOutQuad)
+        const easedProgress = progress * (2 - progress);
 
-			if (uniformsRef.current) {
-				uniformsRef.current.u_master_opacity.value = easedProgress;
-				uniformsRef.current.u_noise_amp.value = lerp(startingNoiseAmp, endingNoiseAmp, easedProgress);
-				uniformsRef.current.u_noise_scale.value.y = lerp(0.15, 0.34, easedProgress);
-				uniformsRef.current.u_noise_scale.value.x = lerp(0.05, 0.2, easedProgress);
-			}
+        if (uniformsRef.current) {
+          uniformsRef.current.u_master_opacity.value = easedProgress;
+          uniformsRef.current.u_noise_amp.value = lerp(
+            startingNoiseAmp,
+            endingNoiseAmp,
+            easedProgress
+          );
+          uniformsRef.current.u_noise_scale.value.y = lerp(0.15, 0.34, easedProgress);
+          uniformsRef.current.u_noise_scale.value.x = lerp(0.05, 0.2, easedProgress);
+        }
 
-			if (progress < 1) {
-				animationFrameId.current = requestAnimationFrame(introAnimation);
-			}
-		};
-		animationFrameId.current = requestAnimationFrame(introAnimation);
-	}, [startingNoiseAmp, endingNoiseAmp]);
+        if (progress < 1) {
+          animationFrameId.current = requestAnimationFrame(introAnimation);
+        }
+      };
+      animationFrameId.current = requestAnimationFrame(introAnimation);
+    },
+    [startingNoiseAmp, endingNoiseAmp]
+  );
 
-	useEffect(() => {
-		const currentCanvas = canvasRef.current;
-		if (!currentCanvas || height === 10) return;
+  useEffect(() => {
+    const currentCanvas = canvasRef.current;
+    if (!currentCanvas || height === 10) return;
 
-		// Renderer
-		const renderer = new THREE.WebGLRenderer({
-			canvas: currentCanvas,
-			antialias: true,
-			alpha: true, // Enable transparency
-		});
-		renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5)); // Clamp for performance
-		renderer.setSize(currentCanvas.clientWidth, currentCanvas.clientHeight);
-		renderer.setClearColor(0xffffff, 0); // White with 0 opacity
-		rendererRef.current = renderer;
+    // Renderer
+    const renderer = new THREE.WebGLRenderer({
+      canvas: currentCanvas,
+      antialias: true,
+      alpha: true, // Enable transparency
+    });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5)); // Clamp for performance
+    renderer.setSize(currentCanvas.clientWidth, currentCanvas.clientHeight);
+    renderer.setClearColor(0xffffff, 0); // White with 0 opacity
+    rendererRef.current = renderer;
 
-		// Scene and Camera
-		const scene = new THREE.Scene();
-		sceneRef.current = scene;
+    // Scene and Camera
+    const scene = new THREE.Scene();
+    sceneRef.current = scene;
 
-		const camera = new THREE.PerspectiveCamera(
-			75,
-			currentCanvas.clientWidth / currentCanvas.clientHeight,
-			0.1,
-			1000
-		);
-		camera.zoom = 4;
-		camera.position.y = -0.2;
-		camera.position.z = isMobile ? 13 : 10;
-		camera.updateProjectionMatrix();
-		cameraRef.current = camera;
+    const camera = new THREE.PerspectiveCamera(
+      75,
+      currentCanvas.clientWidth / currentCanvas.clientHeight,
+      0.1,
+      1000
+    );
+    camera.zoom = 4;
+    camera.position.y = -0.2;
+    camera.position.z = isMobile ? 13 : 10;
+    camera.updateProjectionMatrix();
+    cameraRef.current = camera;
 
-		// Clock
-		const clock = new THREE.Clock();
-		clockRef.current = clock;
+    // Clock
+    const clock = new THREE.Clock();
+    clockRef.current = clock;
 
-		// Gradient Texture and Material
-		const textureLoader = new THREE.TextureLoader();
-		const gradientRampTexture = textureLoader.load("https://images.ctfassets.net/fzn2n1nzq965/6FlvDJnget42zcLGvWPWW8/282726ca965f03513ecc624b5edc752a/gradient-v2.png");
-		gradientRampTexture.wrapS = THREE.ClampToEdgeWrapping;
-		gradientRampTexture.wrapT = THREE.ClampToEdgeWrapping;
-		uniformsRef.current.u_gradient_ramp.value = gradientRampTexture;
+    // Gradient Texture and Material
+    const textureLoader = new THREE.TextureLoader();
+    const gradientRampTexture = textureLoader.load(
+      "https://images.ctfassets.net/fzn2n1nzq965/6FlvDJnget42zcLGvWPWW8/282726ca965f03513ecc624b5edc752a/gradient-v2.png"
+    );
+    gradientRampTexture.wrapS = THREE.ClampToEdgeWrapping;
+    gradientRampTexture.wrapT = THREE.ClampToEdgeWrapping;
+    uniformsRef.current.u_gradient_ramp.value = gradientRampTexture;
 
-		const gradientMaterial = new THREE.ShaderMaterial({
-			vertexShader: `
+    const gradientMaterial = new THREE.ShaderMaterial({
+      vertexShader: `
 				varying vec3 vWorldPosition;
 				void main() {
 					vec4 worldPosition = modelMatrix * vec4(position, 1.0);
@@ -1048,106 +1063,127 @@ export const NodxWaveCanvas: React.FC<{ pageType?: string }> = ({ pageType = 'Pr
 					gl_Position = projectionMatrix * viewMatrix * vec4(position, 1.0);
 				}
 			`,
-			fragmentShader: GRADIENT_FRAGMENT_SHADER,
-			uniforms: uniformsRef.current,
-			side: THREE.DoubleSide,
-		});
-		const gradientGeometry = new THREE.PlaneGeometry(20, 20);
-		const gradientMesh = new THREE.Mesh(gradientGeometry, gradientMaterial);
-		gradientMesh.translateZ(-5); // Push it back
-		gradientMeshRef.current = gradientMesh;
+      fragmentShader: GRADIENT_FRAGMENT_SHADER,
+      uniforms: uniformsRef.current,
+      side: THREE.DoubleSide,
+    });
+    const gradientGeometry = new THREE.PlaneGeometry(20, 20);
+    const gradientMesh = new THREE.Mesh(gradientGeometry, gradientMaterial);
+    gradientMesh.translateZ(-5); // Push it back
+    gradientMeshRef.current = gradientMesh;
 
-		const gradientScene = new THREE.Scene();
-		gradientSceneRef.current = gradientScene;
-		gradientScene.add(gradientMesh);
+    const gradientScene = new THREE.Scene();
+    gradientSceneRef.current = gradientScene;
+    gradientScene.add(gradientMesh);
 
-		const gradientRenderTarget = new THREE.WebGLRenderTarget(512, 512, {
-			wrapS: THREE.ClampToEdgeWrapping,
-			wrapT: THREE.ClampToEdgeWrapping,
-			minFilter: THREE.LinearFilter,
-			magFilter: THREE.LinearFilter,
-			format: THREE.RGBAFormat,
-		});
-		gradientRenderTargetRef.current = gradientRenderTarget;
+    const gradientRenderTarget = new THREE.WebGLRenderTarget(512, 512, {
+      wrapS: THREE.ClampToEdgeWrapping,
+      wrapT: THREE.ClampToEdgeWrapping,
+      minFilter: THREE.LinearFilter,
+      magFilter: THREE.LinearFilter,
+      format: THREE.RGBAFormat,
+    });
+    gradientRenderTargetRef.current = gradientRenderTarget;
 
-		// Main Wave Mesh
-		const geometry = new THREE.PlaneGeometry(width, height, widthSegments, heightSegments);
-		foldPlane(geometry);
-		transformPlane(geometry);
-		geometry.computeVertexNormals();
-		geometry.computeTangents(); // Required for tangent attribute in shader
+    // Main Wave Mesh
+    const geometry = new THREE.PlaneGeometry(width, height, widthSegments, heightSegments);
+    foldPlane(geometry);
+    transformPlane(geometry);
+    geometry.computeVertexNormals();
+    geometry.computeTangents(); // Required for tangent attribute in shader
 
-		const material = new THREE.ShaderMaterial({
-			vertexShader: VERTEX_SHADER,
-			fragmentShader: FRAGMENT_SHADER,
-			transparent: true,
-			uniforms: {
-				...uniformsRef.current,
-				u_env_texture: { value: gradientRenderTarget.texture },
-			},
-		});
-		const mainMesh = new THREE.Mesh(geometry, material);
-		mainMeshRef.current = mainMesh;
-		scene.add(mainMesh);
+    const material = new THREE.ShaderMaterial({
+      vertexShader: VERTEX_SHADER,
+      fragmentShader: FRAGMENT_SHADER,
+      transparent: true,
+      uniforms: {
+        ...uniformsRef.current,
+        u_env_texture: { value: gradientRenderTarget.texture },
+      },
+    });
+    const mainMesh = new THREE.Mesh(geometry, material);
+    mainMeshRef.current = mainMesh;
+    scene.add(mainMesh);
 
-		// Animation Loop
-		const animate = () => {
-			if (!rendererRef.current || !sceneRef.current || !cameraRef.current || !clockRef.current || !gradientSceneRef.current || !gradientRenderTargetRef.current) return;
+    // Animation Loop
+    const animate = () => {
+      if (
+        !rendererRef.current ||
+        !sceneRef.current ||
+        !cameraRef.current ||
+        !clockRef.current ||
+        !gradientSceneRef.current ||
+        !gradientRenderTargetRef.current
+      )
+        return;
 
-			uniformsRef.current.u_time.value = clockRef.current.getElapsedTime();
+      uniformsRef.current.u_time.value = clockRef.current.getElapsedTime();
 
-			// Render gradient scene to render target
-			rendererRef.current.setRenderTarget(gradientRenderTargetRef.current);
-			rendererRef.current.render(gradientSceneRef.current, cameraRef.current);
-			rendererRef.current.setRenderTarget(null); // Reset render target
+      // Render gradient scene to render target
+      rendererRef.current.setRenderTarget(gradientRenderTargetRef.current);
+      rendererRef.current.render(gradientSceneRef.current, cameraRef.current);
+      rendererRef.current.setRenderTarget(null); // Reset render target
 
-			// Render main scene
-			rendererRef.current.render(sceneRef.current, cameraRef.current);
+      // Render main scene
+      rendererRef.current.render(sceneRef.current, cameraRef.current);
 
-			animationFrameId.current = requestAnimationFrame(animate);
-		};
+      animationFrameId.current = requestAnimationFrame(animate);
+    };
 
-		// Handle Resize
-		const handleResize = () => {
-			if (currentCanvas) {
-				renderer.setSize(currentCanvas.clientWidth, currentCanvas.clientHeight);
-				camera.aspect = currentCanvas.clientWidth / currentCanvas.clientHeight;
-				camera.position.z = isMobile ? 13 : 10;
-				camera.updateProjectionMatrix();
-			}
-		};
+    // Handle Resize
+    const handleResize = () => {
+      if (currentCanvas) {
+        renderer.setSize(currentCanvas.clientWidth, currentCanvas.clientHeight);
+        camera.aspect = currentCanvas.clientWidth / currentCanvas.clientHeight;
+        camera.position.z = isMobile ? 13 : 10;
+        camera.updateProjectionMatrix();
+      }
+    };
 
-		window.addEventListener('resize', handleResize);
+    window.addEventListener("resize", handleResize);
 
-		// Start intro animation
-		animateIntro(performance.now());
-		animate();
+    // Start intro animation
+    animateIntro(performance.now());
+    animate();
 
-		// Cleanup
-		return () => {
-			if (animationFrameId.current) {
-				cancelAnimationFrame(animationFrameId.current);
-			}
-			window.removeEventListener('resize', handleResize);
-			if (rendererRef.current) {
-				rendererRef.current.dispose();
-			}
-			if (gradientRampTexture) {
-				gradientRampTexture.dispose();
-			}
-			if (gradientRenderTargetRef.current) {
-				gradientRenderTargetRef.current.dispose();
-			}
-			if (mainMeshRef.current) {
-				mainMeshRef.current.geometry.dispose();
-				(mainMeshRef.current.material as THREE.ShaderMaterial).dispose();
-			}
-			if (gradientMeshRef.current) {
-				gradientMeshRef.current.geometry.dispose();
-				(gradientMeshRef.current.material as THREE.ShaderMaterial).dispose();
-			}
-		};
-	}, [isMobile, foldPlane, transformPlane, animateIntro, height, width, widthSegments, heightSegments, quartCircum, radius, endingNoiseAmp, startingNoiseAmp]);
+    // Cleanup
+    return () => {
+      if (animationFrameId.current) {
+        cancelAnimationFrame(animationFrameId.current);
+      }
+      window.removeEventListener("resize", handleResize);
+      if (rendererRef.current) {
+        rendererRef.current.dispose();
+      }
+      if (gradientRampTexture) {
+        gradientRampTexture.dispose();
+      }
+      if (gradientRenderTargetRef.current) {
+        gradientRenderTargetRef.current.dispose();
+      }
+      if (mainMeshRef.current) {
+        mainMeshRef.current.geometry.dispose();
+        (mainMeshRef.current.material as THREE.ShaderMaterial).dispose();
+      }
+      if (gradientMeshRef.current) {
+        gradientMeshRef.current.geometry.dispose();
+        (gradientMeshRef.current.material as THREE.ShaderMaterial).dispose();
+      }
+    };
+  }, [
+    isMobile,
+    foldPlane,
+    transformPlane,
+    animateIntro,
+    height,
+    width,
+    widthSegments,
+    heightSegments,
+    quartCircum,
+    radius,
+    endingNoiseAmp,
+    startingNoiseAmp,
+  ]);
 
-	return <canvas ref={canvasRef} className="nodx-wave-canvas" />;
+  return <canvas ref={canvasRef} className="nodx-wave-canvas" />;
 };
