@@ -1,6 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  output: "standalone",
   webpack: (config, options) => {
     config.module.rules.push({
       test: /\.(glsl|vs|fs|vert|frag)$/,

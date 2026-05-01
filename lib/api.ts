@@ -1,7 +1,7 @@
 // API helper for fetching blog posts from Super Charles backend
 
 const SUPER_CHARLES_API =
-  process.env.NEXT_PUBLIC_SUPER_CHARLES_API || "https://super-charles.vercel.app";
+  process.env.NEXT_PUBLIC_SUPER_CHARLES_API || "https://app.collinrijock.com";
 
 export interface BlogPost {
   id: number;
