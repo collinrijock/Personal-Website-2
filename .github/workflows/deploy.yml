@@ -1,0 +1,112 @@
+# Personal website deploy.
+#
+# Runs on the dedicated self-hosted Mac mini runner registered under the
+# `personal-website` label. The runner is a separate instance from the
+# super-charles runner — same physical box, $0 cost, no contention with
+# super-charles deploys (each runner only processes one job at a time).
+#
+# Steady-state flow:
+#   1. checkout (default actions/checkout@v4)
+#   2. bun install --frozen-lockfile && bun run build
+#   3. rsync .next/standalone, .next/static, public into
+#      /Users/collin/srv/personal-website/standalone/
+#   4. launchctl kickstart -k com.personal-website.web to swap the
+#      running Node process onto the freshly synced files
+#   5. probe http://127.0.0.1:3002/ until it returns 200
+#
+# The standalone path is fixed and lives outside the super-charles
+# release tree; future super-charles deploys cannot break this site.
+
+name: Deploy Personal Website
+
+on:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: personal-website-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Build & deploy to Mac mini
+    runs-on: [self-hosted, macOS, ARM64, personal-website]
+    timeout-minutes: 15
+
+    env:
+      STANDALONE_DIR: /Users/collin/srv/personal-website/standalone
+      LAUNCHD_LABEL: com.personal-website.web
+      HEALTH_URL: http://127.0.0.1:3002/
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Install dependencies
+        run: |
+          export PATH="$HOME/.bun/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"
+          bun --version
+          bun install --frozen-lockfile
+
+      - name: Build
+        run: |
+          export PATH="$HOME/.bun/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"
+          bun run build
+
+      - name: Sync standalone artifacts to Mac mini
+        run: |
+          mkdir -p "${STANDALONE_DIR}"
+          rsync -a --delete .next/standalone/             "${STANDALONE_DIR}/"
+          rsync -a --delete .next/static/                 "${STANDALONE_DIR}/.next/static/"
+          rsync -a --delete public/                       "${STANDALONE_DIR}/public/"
+
+      - name: Restart launchd service
+        run: |
+          launchctl kickstart -k "gui/$(id -u)/${LAUNCHD_LABEL}"
+
+      - name: Wait for local healthcheck
+        run: |
+          for attempt in $(seq 1 20); do
+            if curl -fsS --max-time 3 "${HEALTH_URL}" >/dev/null; then
+              echo "Local health passed on attempt ${attempt}."
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Local health did not pass within 40s." >&2
+          exit 1
+
+      - name: Public healthcheck
+        run: |
+          for attempt in $(seq 1 10); do
+            code=$(curl -sS --max-time 5 -o /dev/null -w "%{http_code}" https://collinrijock.com/favicon.ico || echo 000)
+            if [ "$code" = "200" ]; then
+              echo "Public health passed on attempt ${attempt}."
+              exit 0
+            fi
+            sleep 3
+          done
+          echo "Public favicon health did not return 200 within 30s." >&2
+          exit 1
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "## Personal Website Deploy"
+            echo ""
+            echo "| Property | Value |"
+            echo "|---|---|"
+            echo "| Status | ${{ job.status }} |"
+            echo "| Runner | mac-mini-personal-website |"
+            echo "| Standalone path | ${STANDALONE_DIR} |"
+            echo "| Launchd label | ${LAUNCHD_LABEL} |"
+            echo "| Commit | \`${{ github.sha }}\` |"
+          } >> "$GITHUB_STEP_SUMMARY"
