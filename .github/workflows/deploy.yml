@@ -1,6 +1,6 @@
 # Personal website deploy.
 #
-# Runs on the dedicated self-hosted Mac mini runner registered under the
+# Runs on the dedicated self-hosted Exowatt Mac runner registered under the
 # `personal-website` label. The runner is a separate instance from the
 # super-charles runner — same physical box, $0 cost, no contention with
 # super-charles deploys (each runner only processes one job at a time).
@@ -9,7 +9,7 @@
 #   1. checkout (default actions/checkout@v4)
 #   2. bun install --frozen-lockfile && bun run build
 #   3. rsync .next/standalone, .next/static, public into
-#      /Users/collin/srv/personal-website/standalone/
+#      /Users/collinrijock/srv/personal-website/standalone/
 #   4. launchctl kickstart -k com.personal-website.web to swap the
 #      running Node process onto the freshly synced files
 #   5. probe http://127.0.0.1:3002/ until it returns 200
@@ -34,12 +34,12 @@ concurrency:
 
 jobs:
   deploy:
-    name: Build & deploy to Mac mini
+    name: Build & deploy to Exowatt Mac
     runs-on: [self-hosted, macOS, ARM64, personal-website]
     timeout-minutes: 15
 
     env:
-      STANDALONE_DIR: /Users/collin/srv/personal-website/standalone
+      STANDALONE_DIR: /Users/collinrijock/srv/personal-website/standalone
       LAUNCHD_LABEL: com.personal-website.web
       HEALTH_URL: http://127.0.0.1:3002/
 
@@ -60,7 +60,7 @@ jobs:
           export PATH="$HOME/.bun/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"
           bun run build
 
-      - name: Sync standalone artifacts to Mac mini
+      - name: Sync standalone artifacts to Exowatt Mac
         run: |
           mkdir -p "${STANDALONE_DIR}"
           rsync -a --delete .next/standalone/             "${STANDALONE_DIR}/"
@@ -105,7 +105,7 @@ jobs:
             echo "| Property | Value |"
             echo "|---|---|"
             echo "| Status | ${{ job.status }} |"
-            echo "| Runner | mac-mini-personal-website |"
+            echo "| Runner | exowatt-personal-website |"
             echo "| Standalone path | ${STANDALONE_DIR} |"
             echo "| Launchd label | ${LAUNCHD_LABEL} |"
             echo "| Commit | \`${{ github.sha }}\` |"
