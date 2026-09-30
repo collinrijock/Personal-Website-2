@@ -1,0 +1,263 @@
+/* collin rijock · site e
+   white page. the colour sits behind it: a sky at the top that fades out,
+   then a horizon along the bottom that the words rise out of. */
+
+:root {
+  /* the palette. main.js rewrites these when you pick another set */
+  --c0: #6a2bff;
+  --c1: #18a0ff;
+  --c2: #ff2d87;
+  --c3: #ff7a1a;
+  --c4: #ffd23f;
+
+  --bg: #ffffff;
+  --ink: #0b1020;
+  --ink-2: #4a5468;
+  --ink-3: #8a93a6;
+  --line: #e8ebf2;
+  --sans: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "Geist Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --m: clamp(20px, 5vw, 72px);
+  color-scheme: light;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html { background: var(--bg); -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font: 400 16px/1.6 var(--sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overflow-x: hidden;
+}
+h1, h2, h3, p, ul, li { margin: 0; }
+ul { padding: 0; list-style: none; }
+a { color: inherit; text-decoration: none; }
+::selection { background: var(--c0); color: #fff; }
+:focus-visible { outline: 2px solid var(--c0); outline-offset: 3px; border-radius: 4px; }
+.wrap { width: 100%; max-width: 1180px; margin: 0 auto; padding: 0 var(--m); }
+
+/* ── the colour ────────────────────────────────────────────────────── */
+/* the splash: a three.js canvas filling the hero, fading out at its foot.
+   everything readable is positioned, so it paints over the canvas, and
+   nothing between the headline and the root makes a stacking context,
+   so the headline can burn into the canvas. */
+.sky, .sky-fallback { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; }
+.sky { display: block; opacity: 0; transition: opacity 1.2s ease; }
+.sky.on { opacity: 1; }
+.sky-fallback {
+  background:
+    radial-gradient(55% 70% at 12% 26%, var(--c2) 0%, transparent 62%),
+    radial-gradient(45% 60% at 55% 8%, var(--c4) 0%, transparent 62%),
+    radial-gradient(55% 80% at 86% 40%, var(--c1) 0%, transparent 60%),
+    radial-gradient(70% 80% at 40% 70%, var(--c3) 0%, transparent 62%),
+    var(--c0);
+  -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 55%, transparent 96%);
+  mask-image: linear-gradient(to bottom, #000 0%, #000 55%, transparent 96%);
+  transition: opacity 1.2s ease;
+}
+.gl-on .sky-fallback { opacity: 0 !important; }
+
+.hero, main, .foot { position: relative; }
+.hero > :not(.sky):not(.sky-fallback):not(.grunt) { position: relative; }
+
+/* ── hero ──────────────────────────────────────────────────────────── */
+.hero {
+  min-height: 100vh;
+  min-height: 100svh;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  padding-bottom: clamp(120px, 22vh, 240px); /* the fade lives down here */
+}
+.nav { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding-top: 26px; padding-bottom: 26px; font-size: 15px; font-weight: 500; color: #fff; }
+.me { letter-spacing: -0.01em; }
+.nav-links { display: flex; gap: 24px; }
+.nav a { opacity: .92; transition: opacity .2s; }
+.nav a:hover { opacity: 1; }
+.nav-links a { position: relative; display: inline-flex; align-items: center; gap: 6px; text-decoration: underline; text-decoration-color: rgba(255, 255, 255, .45); text-underline-offset: 4px; text-decoration-thickness: 1.5px; transition: text-decoration-color .2s; }
+.nav-links a:hover { text-decoration-color: #fff; }
+
+.hero-body { align-self: center; padding-top: 2vh; }
+[data-lift] { position: relative; transform-origin: 50% 100%; will-change: transform, opacity; }
+.nav, .eyebrow, .lede, .hint { text-shadow: 0 1px 16px rgba(24, 10, 70, .28); }
+.eyebrow { font: 500 13px/1 var(--mono); letter-spacing: .02em; color: #fff; opacity: .9; }
+/* the stripe trick: dark type burned into the colour, so it takes the hue under it */
+h1 {
+  margin-top: 22px;
+  margin-left: -0.05em;
+  font-weight: 600;
+  font-size: clamp(64px, 12.5vw, 184px);
+  line-height: .84;
+  letter-spacing: -0.06em;
+  color: #5e5e5e;
+  mix-blend-mode: color-burn;
+  max-width: 9ch;
+}
+.lede {
+  margin-top: 30px;
+  font-size: clamp(19px, 1.9vw, 26px);
+  line-height: 1.35;
+  letter-spacing: -0.015em;
+  font-weight: 450;
+  color: #fff;
+  max-width: 30ch;
+}
+.cta { margin-top: 32px; display: flex; flex-wrap: wrap; gap: 12px; }
+.pill {
+  display: inline-flex; align-items: center; gap: 8px;
+  height: 44px; padding: 0 20px; border-radius: 999px;
+  font-size: 15px; font-weight: 500;
+  color: var(--ink); background: #fff;
+  box-shadow: 0 6px 24px rgba(24, 10, 70, .18);
+  transition: transform .2s ease, box-shadow .2s ease;
+}
+.pill span { transition: transform .2s ease; }
+.pill .ico { width: 16px; height: 16px; }
+.pill:hover { transform: translateY(-1px); box-shadow: 0 10px 30px rgba(24, 10, 70, .24); }
+.pill:hover span { transform: translateX(3px); }
+.pill.ghost { color: #fff; background: rgba(255, 255, 255, .16); box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, .55); }
+
+.hero-meta { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+.palettes { display: flex; gap: 8px; }
+.swatch {
+  width: 26px; height: 26px; padding: 0; border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, .55);
+  background: var(--sw);
+  cursor: pointer;
+  transition: transform .2s ease, border-color .2s;
+}
+.swatch:hover { transform: scale(1.12); }
+.swatch[aria-pressed="true"] { border-color: #fff; box-shadow: 0 0 0 2px rgba(11, 16, 32, .18); }
+.hint { font: 400 12px/1.3 var(--mono); color: #fff; opacity: .85; }
+.hint-touch { display: none; }
+@media (hover: none) { .hint-fine { display: none; } .hint-touch { display: inline; } }
+.no-gl .hint { display: none; }
+html:not(.js) .hero-meta { display: none; } /* swatches and hints need the script */
+
+/* ── the words stand up as they scroll in ──────────────────────────── */
+[data-rise] { transform-origin: 50% 100%; will-change: transform, opacity; }
+.label { display: flex; align-items: center; gap: 10px; font: 500 13px/1 var(--mono); color: var(--ink-3); letter-spacing: .01em; }
+.label i { width: 8px; height: 8px; border-radius: 50%; background: var(--dot); transition: background .8s; }
+
+.manifesto { padding-top: clamp(40px, 8vh, 96px); }
+.manifesto .label { margin-bottom: 26px; }
+.line {
+  position: relative;
+  width: fit-content;
+  font-size: clamp(34px, 5.4vw, 76px);
+  line-height: 1.04;
+  font-weight: 600;
+  letter-spacing: -0.045em;
+  color: var(--ink);
+  padding: .06em 0;
+}
+.line.soft { color: var(--ink-3); }
+.line.grad {
+  margin-top: .2em;
+  background: linear-gradient(100deg, var(--c0) 0%, var(--c2) 38%, var(--c3) 68%, var(--c4) 100%);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+
+.duo { margin-top: clamp(96px, 14vw, 180px); display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: clamp(20px, 3vw, 40px); }
+.duo article {
+  position: relative;
+  display: flex; flex-direction: column;
+  padding: clamp(24px, 3vw, 36px);
+  border-radius: 20px;
+  background: var(--bg);
+  box-shadow: 0 0 0 1px var(--line), 0 24px 60px -30px rgba(24, 10, 70, .22);
+}
+.duo h2 { margin-top: 18px; font-size: 26px; line-height: 1.15; font-weight: 600; letter-spacing: -0.025em; }
+.duo article > p:not(.label) { margin-top: 12px; color: var(--ink-2); font-size: 16px; line-height: 1.6; }
+.more { margin-top: auto; padding-top: 22px; font-weight: 500; font-size: 15px; color: var(--ink); display: inline-flex; align-items: center; gap: 7px; align-self: flex-start; text-decoration: underline; text-decoration-color: var(--line); text-underline-offset: 5px; text-decoration-thickness: 1.5px; transition: text-decoration-color .2s; }
+.more:hover { text-decoration-color: var(--c0); }
+.more span { transition: transform .2s ease; }
+.more:hover span { transform: translateX(4px); }
+.more:hover { background: linear-gradient(90deg, var(--c1), var(--c0), var(--c2)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+
+/* ── footer ────────────────────────────────────────────────────────── */
+.foot { margin-top: clamp(110px, 14vw, 180px); padding-bottom: 64px; }
+.say-row { position: relative; display: flex; align-items: flex-end; gap: 10px; width: fit-content; }
+.say {
+  font-size: clamp(56px, 9vw, 128px); line-height: .9; font-weight: 600; letter-spacing: -0.055em;
+  background: linear-gradient(100deg, var(--c1) 0%, var(--c0) 35%, var(--c2) 68%, var(--c3) 100%);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  padding-bottom: .08em;
+}
+.say-links { margin-top: 28px; display: flex; flex-wrap: wrap; gap: 10px 28px; font-size: 17px; font-weight: 500; }
+.say-links a { display: inline-flex; align-items: center; gap: 7px; text-decoration: underline; text-decoration-color: var(--line); text-underline-offset: 5px; text-decoration-thickness: 1.5px; transition: text-decoration-color .2s; }
+.say-links a:hover { text-decoration-color: var(--c0); }
+.fine { margin-top: 56px; padding-top: 22px; border-top: 1px solid var(--line); font: 400 12px/1.5 var(--mono); color: var(--ink-3); }
+.fine a { color: var(--ink-2); display: inline-flex; align-items: center; gap: 4px; text-decoration: underline; text-decoration-color: var(--line); text-underline-offset: 3px; }
+.fine a .ico { width: 12px; height: 12px; }
+.ico { width: 15px; height: 15px; flex: none; display: inline-block; vertical-align: -0.15em; }
+
+/* ── grunts ────────────────────────────────────────────────────────── */
+.grunt {
+  position: absolute;
+  width: var(--gs, 56px); height: var(--gs, 56px);
+  display: block;
+  cursor: pointer;
+  z-index: 2;
+  -webkit-tap-highlight-color: transparent;
+}
+.grunt-body { display: block; width: 100%; height: 100%; }
+.grunt svg { display: block; width: 100%; height: 100%; overflow: visible; filter: drop-shadow(0 8px 14px rgba(24, 10, 70, .18)); }
+.grunt-bubble {
+  position: absolute; left: 50%; bottom: calc(100% + 6px);
+  transform: translate(-50%, 4px);
+  padding: 5px 10px; border-radius: 999px;
+  font: 500 12px/1 var(--mono); letter-spacing: 0; white-space: nowrap;
+  color: var(--ink); background: #fff;
+  -webkit-text-fill-color: currentColor;
+  box-shadow: 0 4px 16px rgba(24, 10, 70, .16), 0 0 0 1px var(--line);
+  opacity: 0; pointer-events: none;
+  transition: opacity .2s ease, transform .2s ease;
+}
+.grunt.talk .grunt-bubble { opacity: 1; transform: translate(-50%, 0); }
+html:not(.js) .grunt, html:not(.js) .grunt-guide { display: none; }
+
+.g-hero { right: 9%; top: 24%; }
+.g-atoms { position: relative; display: inline-block; vertical-align: -0.1em; margin-left: .3em; }
+.g-perch { right: 22px; top: calc(var(--gs) * -0.64); }
+.g-wave { position: relative; margin-bottom: .1em; }
+
+.grunt-guide {
+  position: fixed; right: clamp(14px, 3vw, 36px); bottom: clamp(14px, 3vh, 30px); z-index: 5;
+  display: flex; align-items: center; gap: 8px; flex-direction: row-reverse;
+  opacity: 0; transform: translateY(24px); pointer-events: none;
+  transition: opacity .5s ease, transform .5s ease;
+}
+.grunt-guide .grunt { position: relative; }
+.guide-on .grunt-guide { opacity: 1; transform: none; pointer-events: auto; }
+.guide-say {
+  padding: 7px 12px; border-radius: 999px;
+  font: 500 12px/1 var(--mono); color: var(--ink); background: #fff;
+  box-shadow: 0 4px 16px rgba(24, 10, 70, .16), 0 0 0 1px var(--line);
+  opacity: 0; transform: translateX(6px); transition: opacity .2s, transform .2s;
+}
+.grunt-guide:hover .guide-say, .grunt-guide:focus-visible .guide-say { opacity: 1; transform: none; }
+
+/* ── dark ──────────────────────────────────────────────────────────── */
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #070a14; --ink: #eef1f8; --ink-2: #a7afc2; --ink-3: #6f788d; --line: #1b2133; color-scheme: dark; }
+  .pill { color: #0b1020; }
+  .grunt-bubble, .guide-say { color: #0b1020; }
+}
+
+/* ── small screens ─────────────────────────────────────────────────── */
+@media (max-width: 860px) {
+  .duo { grid-template-columns: 1fr; }
+  .g-hero { right: 4%; top: 14%; }
+}
+@media (max-width: 560px) {
+  .nav-links { gap: 14px; }
+  .nav { font-size: 14px; }
+  .nav-links a[href^="https://app"] { display: none; } /* writing lives in the footer on phones */
+  h1 { font-size: clamp(60px, 19vw, 96px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-rise], [data-lift] { transform: none !important; opacity: 1 !important; }
+}

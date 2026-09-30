@@ -1,0 +1,53 @@
+# collin rijock
+
+> software engineer in miami. lead software engineer at exowatt. i think hardware is the future for software engineers, so i'm getting into it.
+
+- email: collin@rijock.com
+- x / twitter: https://x.com/CollinRijock
+- github: https://github.com/collinrijock
+- linkedin: https://www.linkedin.com/in/collin-rijock/
+- writing: https://app.collinrijock.com/blog
+- the map (everything on this site as a 3d brainstorm): map.html
+
+## where i'm headed
+
+- agents made code cheap. atoms are still hard.
+- the next great software will run things you can touch.
+- at exowatt, mine already commands real batteries.
+- climb the mountain.
+
+## now
+
+- exowatt (https://exowatt.com): lead software engineer, and the second software hire. exowatt makes 24-hour solar for ai data centers: sunlight in, heat stored, electricity on demand. i build the software the company and its energy sites run on.
+
+## on the side
+
+- super charles (https://app.collinrijock.com): my life on one postgres db. tasks, calendar, health and money, with agents that do the work. runs on a mac mini at home.
+
+## before
+
+- buildrfi (2024 to 2025): founding engineer at a miami proptech startup doing lending and payments for construction subcontractors. techstars and metaprop accelerator company. took a contractor lending product from zero to live loans; wired plaid, stripe and quickbooks into an ai underwriting engine; shipped a claude-powered document parser. stood on the floor of the new york stock exchange with the metaprop cohort in march 2025.
+- lula (2022 to 2024): early engineer at a miami insurtech ("stripe for insurance"). built much of the first platform, owned onboarding and add-vehicle, led automated underwriting. there through the series b.
+- kabcash (2021): founding engineer at a mexico city fintech. built the react native app in college, owned payments, shipped to the app store. started at miami hack week.
+- fiu applied research center (2021): ml engineer. lstm anomaly detection on navy sensor data.
+
+## things i've made
+
+at exowatt (most of it stays inside; in broad strokes):
+
+- the internal company platform: the software the whole company runs on.
+- an energy management system, taken from simulation to commanding real hardware.
+- ai research, with patents: agents that operate energy sites.
+- a digital twin in a game engine: real-time 3d twins of energy sites and hardware.
+- my own coding harness and ade: forked an open-source agent app into an agentic development environment, shipped to every engineer.
+- a webkit browser: my own fork, built for agents to drive.
+
+on my own time:
+
+- super charles: my life on one postgres db, with agents that do the work. https://app.collinrijock.com
+- skill-files: agent skills you install with one npx command. https://github.com/collinrijock/skill-files
+- voice-os: a push-to-talk voice os. https://github.com/collinrijock/voice-os
+- stream deck daemon: drives a stream deck over raw hid, no vendor app.
+- legends of the friendgroup: a pixel-art tavern auto-battler, built with agents driving unity. https://github.com/collinrijock/LegendsOfTheFriendgroup
+- pokemon showdown bot: a deep reinforcement learning bot. https://github.com/collinrijock/Pokemon-Showdown-Bot
+- carecart: matched volunteers with people who needed groceries (shellhacks 2020). https://devpost.com/software/carecart-r6gckp
