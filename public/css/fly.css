@@ -95,8 +95,7 @@
   border-radius: 999px;
   text-decoration: none;
   color: var(--ink);
-  background: color-mix(in oklab, var(--bg) 78%, transparent);
-  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+  background: color-mix(in oklab, var(--bg) 86%, transparent);
   box-shadow: inset 0 0 0 1.5px color-mix(in oklab, var(--ink) 12%, transparent), 0 8px 24px -14px rgba(24, 10, 70, .35);
   transition: transform .2s ease, box-shadow .2s ease, background .2s ease;
 }
@@ -113,7 +112,6 @@
   color: #fff;
   background: linear-gradient(100deg, var(--c1) 0%, var(--c0) 38%, var(--c2) 72%, var(--c3) 100%);
   box-shadow: 0 14px 34px -12px color-mix(in oklab, var(--c0) 70%, transparent), inset 0 0 0 1px rgba(255, 255, 255, .25);
-  -webkit-backdrop-filter: none; backdrop-filter: none;
   flex-basis: auto;
 }
 .fly .say-links .fly-mail:hover { transform: translateY(-2px) scale(1.02); box-shadow: 0 20px 40px -12px color-mix(in oklab, var(--c2) 70%, transparent), inset 0 0 0 1px rgba(255, 255, 255, .35); }
@@ -224,7 +222,9 @@
 
 /* the call to action sits over the stage and flies in (js sets the transform per frame) */
 .fly.is-fly .fly-cta { position: absolute; inset: 0; padding: max(56px, env(safe-area-inset-top)) var(--m) max(40px, env(safe-area-inset-bottom)); }
-.fly.is-fly .fly-land { opacity: 0; visibility: hidden; will-change: transform, opacity, filter; }
+.fly.is-fly .fly-land { opacity: 0; visibility: hidden; will-change: transform, opacity; }
+/* the pills blur what's behind them only once the landing is still (a backdrop filter under a moving, scaling parent is a raster cost every frame) */
+.fly.is-landed .say-links a:not(.fly-mail), .fly:not(.is-fly) .say-links a:not(.fly-mail) { -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); background: color-mix(in oklab, var(--bg) 78%, transparent); }
 
 /* reduced motion: a screen of the still map, then the call to action under it on the wash */
 .fly.is-still .fly-stage { display: block; }

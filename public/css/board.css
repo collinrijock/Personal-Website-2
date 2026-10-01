@@ -1,6 +1,8 @@
-/* the canvas section: a figjam-style board in the gruntworks canvas vocabulary,
-   with simulated agent cursors. card styles match map.css so the board and the
-   3d map read as the same material. */
+/* the canvas section: one big figjam-style map in the gruntworks canvas vocabulary
+   (regions, stickies, cards, arrows, chips), with simulated agent cursors. card
+   styles match map.css so the board and the 3d map read as the same material.
+   js/board.js sets data-lod (full | mid | low) and --iz (1 / zoom) on the board,
+   so zoomed out the region titles grow and the cards fade to blocks. */
 
 /* the board is the whole middle of the page: near full width, nearly a screen tall */
 .canvas-sec { --bm: clamp(12px, 2.4vw, 40px); position: relative; padding-top: clamp(24px, 4vh, 56px); }
@@ -13,7 +15,7 @@
 .board {
   --p: #fff; --pi: #1f1f24;
   --shadow-1: 0 1px 2px rgba(20, 24, 40, .06), 0 6px 16px -6px rgba(20, 24, 40, .16);
-  --gx: 0px; --gy: 0px; --gs: 22px;
+  --gx: 0px; --gy: 0px; --gs: 22px; --iz: 1;
   /* the board stays paper-light in dark mode, so its copy keeps the light palette */
   --bg: #fff; --ink: #0b1020; --ink-2: #4a5468; --ink-3: #8a93a6; --line: #e8ebf2;
   color-scheme: light;
@@ -53,7 +55,28 @@ html:not(.js) .board { opacity: 1; height: auto; padding: clamp(14px, 2vw, 28px)
   border-radius: 14px;
   border: 2px solid color-mix(in srgb, var(--p) 55%, #c9cedb);
   background: color-mix(in srgb, var(--p) 22%, rgba(255, 255, 255, .62));
+  contain: layout style;
 }
+/* the same title, big, for when you're zoomed out: it sits over the top of the region */
+.board .frame .big {
+  position: absolute; left: 14px; top: 10px; right: 14px; z-index: 3; pointer-events: none;
+  font: 600 calc(17.5px * var(--iz)) / 1.02 var(--sans); letter-spacing: -0.03em; color: var(--pi);
+  text-shadow: 0 0 calc(6px * var(--iz)) var(--p), 0 0 calc(2px * var(--iz)) var(--p);
+  opacity: 0; transition: opacity .25s ease;
+}
+.board[data-lod="mid"] .frame .big, .board[data-lod="low"] .frame .big { opacity: 1; }
+.board[data-lod="mid"] .frame .ft > span, .board[data-lod="low"] .frame .ft > span { opacity: 0; }
+.board[data-lod="low"] .frame { border-width: calc(2px * var(--iz)); }
+/* zoomed out, the cards' words go, and the cards read as coloured blocks */
+.board .bcard .in > *, .board .bcard .react { transition: opacity .25s ease; }
+.board[data-lod="low"] .bcard .in > *, .board[data-lod="low"] .bcard .react, .board[data-lod="low"] .elabel, .board[data-lod="low"] .frame .count { opacity: 0 !important; }
+.board[data-lod="low"] .bcard .in { background-clip: border-box; }
+.board[data-lod="low"] .sticky[data-color="white"] .in, .board[data-lod="low"] .link .in, .board[data-lod="low"] .image .in { background: #fff; }
+.board[data-lod="low"] .quote .in { background: rgba(11, 16, 32, .06); border-radius: 6px; }
+.board[data-lod="low"] .quote .in::before { opacity: 0; }
+.board[data-lod="low"] .logo .tile { background: #e3e6ee; }
+.board[data-lod="low"] .tags .in { opacity: .5; }
+.board .frame .g-perch { position: absolute; right: 22px; top: calc(var(--gs) * -0.62); z-index: 3; }
 .board .frame .ft, .board .art .ft {
   height: 46px; display: flex; align-items: center; justify-content: space-between; gap: 8px;
   padding: 0 16px; border-radius: 12px 12px 0 0;
@@ -119,7 +142,7 @@ html:not(.js) .board { opacity: 1; height: auto; padding: clamp(14px, 2vw, 28px)
 .board .minimap .mf[data-color="lock"] { background: #1b2030; opacity: .8; }
 
 /* ── cards (same material as the map) ── */
-.board .bcard { position: absolute; left: 0; top: 0; font: 400 16.5px/1.45 var(--sans); color: #0b1020; cursor: grab; z-index: 1; }
+.board .bcard { position: absolute; left: 0; top: 0; font: 400 16.5px/1.45 var(--sans); color: #0b1020; cursor: grab; z-index: 1; contain: layout style; }
 .board .bcard.measure { visibility: hidden; left: -9999px; }
 .board .bcard .in { position: relative; transition: transform .25s cubic-bezier(.2, .7, .2, 1), box-shadow .25s ease, outline-color .2s; outline: 2px solid transparent; outline-offset: 2px; }
 .board .bcard.sel .in { outline-color: var(--ac); }
@@ -144,6 +167,14 @@ html:not(.js) .board { opacity: 1; height: auto; padding: clamp(14px, 2vw, 28px)
 
 .board .quote .in { padding: 6px 4px; font: 600 25px/1.12 var(--sans); letter-spacing: -0.03em; color: #0b1020; }
 .board .quote .in::before { content: ""; display: block; width: 26px; height: 3px; border-radius: 2px; margin-bottom: 10px; background: linear-gradient(90deg, var(--c1), var(--c2), var(--c3)); }
+.board .frame[data-frame="vision"] .quote .in { font-size: 29px; letter-spacing: -0.04em; }
+.board .quote[data-look="soft"] .in { color: #8a93a6; }
+.board .quote[data-look="grad"] .in { background: linear-gradient(100deg, var(--c0) 0%, var(--c2) 38%, var(--c3) 68%, var(--c4) 100%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.board .quote .g-atoms { position: relative; display: inline-block; vertical-align: -0.12em; margin-left: .2em; width: 44px; height: 44px; --gs: 44px !important; }
+.board .quote .g-atoms svg { filter: drop-shadow(0 4px 8px rgba(24, 10, 70, .18)); }
+/* a row of chips (the tags on the "before" regions) */
+.board .tags .in { display: flex; flex-wrap: wrap; gap: 6px; padding: 2px 0; }
+.board .chip { display: inline-flex; align-items: center; padding: 5px 10px; border-radius: 999px; font: 500 12px/1 var(--mono); color: #4a5468; background: color-mix(in srgb, var(--tag, var(--c1)) 14%, #fff); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tag, var(--c1)) 32%, transparent); }
 
 .board .link .in, .board .image .in { background: #fff; border: 1px solid rgba(11, 16, 32, .08); box-shadow: var(--shadow-1); overflow: hidden; }
 .board .link .in { border-radius: 10px; padding: 16px 15px 14px; }
@@ -163,6 +194,11 @@ html:not(.js) .board { opacity: 1; height: auto; padding: clamp(14px, 2vw, 28px)
 .board .image .tb .t { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .board .image .tb .open { position: static; width: 22px; height: 22px; background: rgba(255, 255, 255, .7); }
 .board .image .ph { height: 108px; background: #eef0f6; overflow: hidden; }
+/* the photo: a wide card, two columns on a wide board, the whole picture */
+.board .image.big .ph { height: auto; aspect-ratio: 16 / 10; }
+.board .image.big .in { transform: rotate(-1deg); }
+.board .image.big .tb { height: 40px; font-size: 15px; }
+.board .image.big .n { font: 400 12.5px/1.4 var(--mono); color: #8a93a6; }
 .board .image .ph img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .board .image .n { padding: 8px 12px 10px; font-size: 14.5px; line-height: 1.35; color: #4a5468; }
 .board .logo { text-align: center; }
@@ -274,10 +310,13 @@ html:not(.js) .board { opacity: 1; height: auto; padding: clamp(14px, 2vw, 28px)
 .board .minimap > * { position: absolute; pointer-events: none; }
 .board .minimap .mf { border-radius: 2px; background: var(--p); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--p) 40%, #b9c0cf); }
 .board .minimap .mf.inbox { background: #f1f2f6; box-shadow: inset 0 0 0 1px #c9cedb; }
-.board .minimap .mf.art { background: #fff; box-shadow: inset 0 0 0 1px #c3c9d6, inset 0 3px 0 color-mix(in srgb, var(--p) 70%, #8a93a6); }
 .board .minimap .ma { width: 5px; height: 5px; margin: -2.5px 0 0 -2.5px; border-radius: 50%; background: var(--ac); box-shadow: 0 0 0 1px #fff; }
 .board .minimap .mv { border-radius: 3px; border: 1.5px solid #0b1020; background: rgba(11, 16, 32, .05); box-sizing: border-box; transition: border-color .15s; }
 .board .minimap.scrubbing .mv { border-color: var(--c1, #18a0ff); }
+/* how to move: shows while the pointer rests on a board you haven't taken hold of yet */
+.board .pan-hint { display: none; height: 32px; box-sizing: border-box; align-items: center; gap: 8px; padding: 7px 11px; border-radius: 999px; background: #fff; box-shadow: 0 0 0 1px #e6e9f0; font: 500 11.5px/1 var(--mono); color: #4a5468; opacity: 0; transition: opacity .25s ease; }
+.board .pan-hint kbd { font: inherit; padding: 1px 5px; border-radius: 4px; background: #f1f2f6; color: #0b1020; }
+@media (hover: hover) and (pointer: fine) { .board .pan-hint { display: flex; } .board:hover:not(.engaged) .pan-hint { opacity: 1; } }
 .board .sim { display: flex; height: 32px; box-sizing: border-box; align-items: center; gap: 7px; padding: 7px 11px; border-radius: 999px; background: #fff; box-shadow: 0 0 0 1px #e6e9f0; font: 500 11.5px/1 var(--mono); color: #4a5468; }
 .board .sim i { width: 7px; height: 7px; border-radius: 50%; background: #c9cedb; }
 .board.live .sim i { background: #19c37d; box-shadow: 0 0 0 3px rgba(25, 195, 125, .18); }
@@ -287,7 +326,6 @@ html:not(.js) .board { opacity: 1; height: auto; padding: clamp(14px, 2vw, 28px)
   .board { height: clamp(480px, 80vh, 780px); height: clamp(480px, 80svh, 780px); border-radius: 18px; }
   .board .tools { transform: scale(.9); transform-origin: 0 0; }
   .board .tool[data-tool="frame"], .board .tool[data-tool="text"] { display: none; }
-  .board .zoom button[data-z="-"], .board .zoom button[data-z="+"] { display: none; }
   .board .mode, .board .sim { height: 30px; }
   .board .mode { padding: 0 11px 0 9px; }
   .board .dock { max-width: calc(100% - 130px); }
@@ -301,57 +339,15 @@ html:not(.js) .board { opacity: 1; height: auto; padding: clamp(14px, 2vw, 28px)
   .board .caret, .board .bcard .in, .board .cur .say { animation: none !important; transition: none !important; }
 }
 
-/* ── the articles: real page copy, set as article frames on the board ──
-   board.js lifts each [data-art] into a frame. they're opaque paper, so arrows
-   never run underneath the words, and they keep the page's own type. */
+/* ── the copy without javascript: the same words as a plain column of articles ──
+   (js/board.js removes .arts and builds the map instead) */
 .js .board .arts { position: absolute; left: 0; top: 0; visibility: hidden; pointer-events: none; }
-.board .frame.article {
-  background: #fff;
-  border-color: color-mix(in srgb, var(--p) 70%, #c3c9d6);
-  box-shadow: 0 1px 2px rgba(20, 24, 40, .05), 0 30px 64px -40px rgba(24, 10, 70, .3);
-}
-.board .art { position: relative; color: var(--ink); font-family: var(--sans); }
-.board .frame .art { height: 100%; display: flex; flex-direction: column; }
-.board .art .ft { flex: none; }
-.board .art-body { position: relative; flex: 1; display: flex; flex-direction: column; padding: 32px 36px 36px; }
-.board .art-h { font-size: 33px; line-height: 1.08; font-weight: 600; letter-spacing: -0.035em; color: var(--ink); }
-.board .art-duo .art-body > p { margin-top: 14px; font-size: 17.5px; line-height: 1.62; color: var(--ink-2); max-width: 60ch; }
-.board .art .more { font-size: 16.5px; padding-top: 24px; cursor: pointer; }
-.board .art .more .ico { width: 16px; height: 16px; }
-
-/* how i build: the page's big lines */
-.board .art-vision .art-body { padding: 40px 46px 46px; justify-content: center; }
-.board .art-vision .line { font-size: 50px; line-height: 1.04; letter-spacing: -0.048em; padding: .05em 0; }
-.board .art-vision .line + .line { margin-top: 8px; }
-.board .art-vision .line.grad { margin-top: 20px; }
-.board .g-atoms { position: relative; display: inline-block; vertical-align: -0.12em; margin-left: .25em; }
-
-/* now / on the side */
-.board .art-duo .art-body { padding: 30px 32px 30px; }
-.board .art-duo .art-h { margin-top: 2px; }
-.board .g-perch { right: 24px; top: calc(var(--gs) * -0.62); z-index: 3; }
-
-/* phones: the same articles, one narrow column */
-.board.narrow .art-body { padding: 24px 24px 26px; }
-.board.narrow .art-vision .art-body { padding: 28px 26px 30px; }
-.board.narrow .art-vision .line { font-size: 33px; }
-.board.narrow .art-h { font-size: 28px; }
-.board.narrow .art-duo .art-body > p { font-size: 17px; }
-
-.board.narrow .art-vision .line { font-size: 29px; }
-.board.narrow .art-vision .line + .line { margin-top: 6px; }
-.board.narrow .g-atoms { --gs: 40px !important; vertical-align: -0.2em; }
-/* the locked strip, one frame wide: the pitch and the button wrap under the title */
-.board.narrow .frame.locked .ft { height: auto; flex-wrap: wrap; align-items: center; gap: 10px 12px; padding: 16px 16px 18px; }
-.board.narrow .nda-t { font-size: 17px; }
-.board.narrow .nda-p { flex: 1 0 100%; white-space: normal; font-size: 15px; line-height: 1.4; }
-.board.narrow .frame.locked .count { display: none; }
-.board.narrow .nda-in { position: static; flex-wrap: wrap; padding: 24px 18px 0; gap: 16px; }
-.board.narrow .ghost { flex: 0 0 calc(50% - 8px); }
-.board.narrow .ghost:nth-child(n+3) { display: none; }
-
-/* no javascript: the articles stack, each with its own frame edge */
 html:not(.js) .board .arts { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); gap: 22px; }
-html:not(.js) .board .art { border-radius: 14px; overflow: hidden; background: #fff; border: 2px solid color-mix(in srgb, var(--p) 70%, #c3c9d6); }
-html:not(.js) .board .art-vision, html:not(.js) .board .art-before { grid-column: 1 / -1; }
-html:not(.js) .board .art-vision .line { font-size: clamp(30px, 4.4vw, 50px); }
+html:not(.js) .board .art { position: relative; border-radius: 14px; overflow: hidden; background: #fff; border: 2px solid color-mix(in srgb, var(--p) 70%, #c3c9d6); color: var(--ink); font-family: var(--sans); }
+html:not(.js) .board .art .ft { height: 46px; display: flex; align-items: center; padding: 0 16px; background: var(--p); color: var(--pi); font: 600 17.5px/1 var(--sans); letter-spacing: -0.015em; }
+html:not(.js) .board .art-body { padding: 28px 32px 32px; }
+html:not(.js) .board .art-h { font-size: 30px; line-height: 1.08; font-weight: 600; letter-spacing: -0.035em; }
+html:not(.js) .board .art-body > p:not(.line):not(.art-h) { margin-top: 14px; font-size: 17px; line-height: 1.6; color: var(--ink-2); max-width: 60ch; }
+html:not(.js) .board .art .more { padding-top: 20px; }
+html:not(.js) .board .art:first-child, html:not(.js) .board .art:last-child { grid-column: 1 / -1; }
+html:not(.js) .board .line { font-size: clamp(30px, 4.4vw, 50px); }

@@ -5,10 +5,11 @@
 //   title   the name, big
 //   sticky  a pastel note: { color, text, internal? }  colors: yellow pink blue green purple gray white
 //           internal: true marks exowatt work that stays inside (no link, a small lock line)
-//   quote   one big line of type: { text }
+//   quote   one big line of type: { text, look?: 'soft' | 'grad', grunt?: seed }
 //   link    a media / url card: { title, url, note }
-//   image   an image card with a title bar: { src, title, url? }
+//   image   an image card with a title bar: { src, title, url?, note?, big? }  big: a wide photo card
 //   logo    a tool or network mark: { icon (simple-icons slug) | glyph, label, url? }
+//   tags    a row of chips: { tags: [..] }
 // clusters are canvas frames: a titled region the nodes gather in.
 // edges are canvas arrows, optionally labelled.
 
@@ -40,17 +41,20 @@ export const NODES = [
   { id: 'fiu', cluster: 'me', type: 'sticky', color: 'white', text: 'b.s. computer science, **fiu**.' },
 
   // ── vision ──
-  { id: 'v-future', cluster: 'vision', type: 'quote', text: "i love building software, and i'm getting into building hardware." },
-  { id: 'v-cheap', cluster: 'vision', type: 'sticky', color: 'yellow', text: 'i build a lot of software, **with a lot of agents.**' },
+  { id: 'v-love', cluster: 'vision', type: 'quote', text: 'i love building software.' },
+  { id: 'v-lot', cluster: 'vision', type: 'quote', text: 'i build a lot of it, with a lot of agents.', grunt: 'collin:site:4' },
+  { id: 'v-hard', cluster: 'vision', type: 'quote', look: 'soft', text: "and i'm getting into building hardware." },
+  { id: 'v-cheap', cluster: 'vision', type: 'sticky', color: 'yellow', text: 'agents made code cheap. **atoms are still hard.**' },
   { id: 'v-touch', cluster: 'vision', type: 'sticky', color: 'yellow', text: 'the useful version is not chat-first. **bounded work, visible state**, projects that ship.' },
   { id: 'v-already', cluster: 'vision', type: 'sticky', color: 'blue', text: 'lately some of it runs **real hardware**: batteries, energy sites.' },
   { id: 'v-going', cluster: 'vision', type: 'sticky', color: 'pink', text: 'breadth first, ai native.' },
-  { id: 'v-mountain', cluster: 'vision', type: 'quote', text: 'climb the mountain. do hard things.' },
+  { id: 'v-mountain', cluster: 'vision', type: 'quote', look: 'grad', text: 'climb the mountain.' },
 
   // ── exowatt ──
   { id: 'x-logo', cluster: 'exowatt', type: 'link', title: 'exowatt', url: 'https://exowatt.com', note: '24-hour solar for ai data centers' },
   { id: 'x-p3', cluster: 'exowatt', type: 'sticky', color: 'blue', text: 'the **p3**: capture sunlight, store it as heat, make electricity on demand.' },
   { id: 'x-role', cluster: 'exowatt', type: 'sticky', color: 'white', text: 'lead software engineer. the second software hire.' },
+  { id: 'x-build', cluster: 'exowatt', type: 'sticky', color: 'blue', text: 'i build the software **the company and its energy sites run on.**' },
   { id: 'x-interns', cluster: 'exowatt', type: 'sticky', color: 'white', text: 'hires and mentors the ai research interns.' },
 
   // ── made at exowatt: most of it stays inside, so no links ──
@@ -143,12 +147,24 @@ export const NODES = [
   { id: 'i-kobe', cluster: 'ideas', type: 'sticky', color: 'gray', text: 'fundamentals over shiny objects. kinda like kobe.' },
   { id: 'i-colossus', cluster: 'ideas', type: 'sticky', color: 'blue', text: 'a colossus is a level, not an enemy.' },
 
-  // ── before ──
-  { id: 'b-buildrfi', cluster: 'before', type: 'sticky', color: 'white', text: '**buildrfi.** first engineer. a contractor lending product, zero to live loans.' },
-  { id: 'b-disgo', cluster: 'before', type: 'sticky', color: 'white', text: '**disgo.** solo. crypto loyalty for restaurants, tap an nfc tag to check in.' },
-  { id: 'b-lula', cluster: 'before', type: 'sticky', color: 'white', text: '**lula.** early frontend engineer. onboarding and underwriting flows.' },
-  { id: 'b-kabcash', cluster: 'before', type: 'sticky', color: 'white', text: '**kabcash.** the react native app, built in college.' },
-  { id: 'b-fiu-ml', cluster: 'before', type: 'sticky', color: 'white', text: '**fiu applied research center.** lstm anomaly detection on navy sensor data.' },
+  // ── before: four stints, each a few notes, a row of chips, and the nyse photo ──
+  { id: 'b-lead', cluster: 'before', type: 'quote', text: 'early engineer at three startups, and a research lab at fiu.' },
+  { id: 'b-buildrfi', cluster: 'before', type: 'sticky', color: 'white', text: '**buildrfi** · 2024 → 2025. a proptech startup in miami: lending and payments for construction subcontractors.' },
+  { id: 'b-buildrfi-tags', cluster: 'before', type: 'tags', tags: ['techstars', 'metaprop accelerator', 'first engineer'] },
+  { id: 'b-buildrfi-did', cluster: 'before', type: 'sticky', color: 'yellow', text: '**took a contractor lending product from zero to live loans.** plaid, stripe and quickbooks wired into an ai underwriting engine.' },
+  { id: 'b-buildrfi-parse', cluster: 'before', type: 'sticky', color: 'white', text: 'shipped a claude-powered parser that pulls structured data out of contracts, invoices and bills. owned the whole stack.' },
+  { id: 'b-photo', cluster: 'before', type: 'image', big: true, src: 'img/nyse.jpg', title: 'the nyse floor, with the metaprop cohort · mar 2025', note: 'photo: metaprop' },
+  { id: 'b-lula', cluster: 'before', type: 'sticky', color: 'white', text: '**lula** · 2022 → 2024. miami insurtech, "stripe for insurance": insurance and risk tools for fleets.' },
+  { id: 'b-lula-tags', cluster: 'before', type: 'tags', tags: ['early engineer', 'through the series b'] },
+  { id: 'b-lula-did', cluster: 'before', type: 'sticky', color: 'blue', text: '**built a lot of the first platform.** owned onboarding and add-vehicle, the two highest-traffic flows.' },
+  { id: 'b-lula-uw', cluster: 'before', type: 'sticky', color: 'white', text: 'then led automated underwriting: a rules engine and an internal vehicle portal that ops actually used.' },
+  { id: 'b-kabcash', cluster: 'before', type: 'sticky', color: 'white', text: '**kabcash** · 2021. mexico city fintech: a virtual card and buy-now-pay-later for people the banks skip.' },
+  { id: 'b-kabcash-tags', cluster: 'before', type: 'tags', tags: ['founding engineer', 'miami hack week'] },
+  { id: 'b-kabcash-did', cluster: 'before', type: 'sticky', color: 'pink', text: '**built the react native app in college** with ex-stripe and ex-meta founders, owned payments on the backend, and shipped it to the app store.' },
+  { id: 'b-fiu-ml', cluster: 'before', type: 'sticky', color: 'white', text: "**fiu applied research center** · 2021. fiu's applied research unit: ai, cyber, defense." },
+  { id: 'b-fiu-tags', cluster: 'before', type: 'tags', tags: ['ml engineer'] },
+  { id: 'b-fiu-did', cluster: 'before', type: 'sticky', color: 'green', text: '**lstm anomaly detection on navy sensor data.** catching bad actors, and generating adversarial data to stress the baselines.' },
+  { id: 'b-disgo', cluster: 'before', type: 'sticky', color: 'gray', text: '**disgo.** solo. crypto loyalty for restaurants, tap an nfc tag to check in.' },
 
   // ── tools ──
   { id: 'l-ts', cluster: 'stack', type: 'logo', icon: 'typescript', label: 'typescript' },
@@ -177,17 +193,17 @@ export const NODES = [
 
 // arrows. within a cluster the map also threads a light chain; these are the cross-links.
 export const EDGES = [
-  ['name', 'lede'], ['name', 'v-future'], ['name', 'x-role'], ['name', 'c-db'], ['name', 'w-sidecar'],
+  ['name', 'lede'], ['name', 'v-love'], ['name', 'x-role'], ['name', 'c-db'], ['name', 'w-sidecar'],
   ['v-already', 'x-ems', 'already here'],
   ['v-touch', 'x-p3'],
   ['v-touch', 'x-twins'],
-  ['v-cheap', 'w-sidecar', 'why'],
-  ['r-china', 'v-future', 'shenzhen'],
+  ['v-lot', 'w-sidecar', 'why'], ['v-cheap', 'v-already'],
+  ['r-china', 'v-hard', 'shenzhen'],
   ['v-mountain', 'w-own'],
   ['x-twins', 'l-three', 'built with'],
   ['x-sim', 'x-teammates'],
   ['x-patents', 'x-sim', 'the research'], ['x-ade', 'w-bounded'], ['x-ade', 't-skills', 'skills for it'], ['x-browser', 'x-ade', 'for its agents'], ['x-browser', 't-jev', 'drives it'],
-  ['x-teammates', 'c-chief', 'same idea, at home'],
+  ['x-teammates', 'c-chief', 'same idea, at home'], ['x-build', 'x-platform', 'runs on it'],
   ['c-db', 'l-pg'],
   ['c-chief', 'l-claude'],
   ['c-mcp', 'f-skills'],
@@ -210,7 +226,7 @@ export const EDGES = [
   ['g-mc', 'l-python'],
   ['r-breadth', 'w-breadth'],
   ['r-founders', 'w-compound'],
-  ['b-buildrfi', 'l-next'], ['b-disgo', 'l-expo'], ['b-kabcash', 'l-react'], ['b-lula', 'l-react'],
+  ['b-buildrfi-did', 'l-next'], ['b-disgo', 'l-expo'], ['b-kabcash-did', 'l-react'], ['b-lula-did', 'l-react'], ['b-photo', 'b-buildrfi-tags', 'metaprop'], ['b-lead', 'b-buildrfi'],
   ['fiu', 'b-fiu-ml'], ['fiu', 't-shellhacks'],
   ['miami', 'fiu'],
   ['f-github', 't-skills'], ['f-x', 'name'], ['f-mail', 'name', 'say hi'],

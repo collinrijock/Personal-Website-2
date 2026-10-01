@@ -121,6 +121,16 @@ html.gl .stage {
   background: linear-gradient(90deg, var(--c1), var(--c2), var(--c3));
 }
 
+.quote[data-look="soft"] .in { color: var(--ink-3); }
+.quote[data-look="grad"] .in {
+  background: linear-gradient(100deg, var(--c0) 0%, var(--c2) 38%, var(--c3) 68%, var(--c4) 100%);
+  -webkit-background-clip: text; background-clip: text; color: transparent; text-shadow: none;
+}
+.quote .grunt { display: none; } /* the little guy on the quote belongs to the canvas, not the 3d */
+.tags .in { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { display: inline-flex; align-items: center; padding: 4px 9px; border-radius: 999px; font: 500 11.5px/1 var(--mono); color: var(--ink-2); background: color-mix(in srgb, var(--tag, var(--c1)) 12%, #fff); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tag, var(--c1)) 30%, transparent); }
+.image.big .ph { height: auto; aspect-ratio: 16 / 10; }
+
 .title .in {
   padding: 0 .08em .12em 0;
   font: 600 150px/.92 var(--sans);
@@ -400,6 +410,8 @@ html.touch .hint-touch { display: grid !important; }
 .p-note { color: var(--ink-2); font-size: 13px; }
 .p-host { font: 400 11.5px/1.3 var(--mono); color: var(--ink-3); order: -1; }
 .p-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.p-tags { display: flex; flex-wrap: wrap; gap: 6px; align-content: flex-start; }
+.p-chip { padding: 4px 9px; border-radius: 999px; font: 500 11.5px/1 var(--mono); color: var(--ink-2); background: #fff; border: 1px solid rgba(11, 16, 32, .14); }
 .p-logo { padding: 6px 12px; border-radius: 999px; background: #fff; border: 1px solid rgba(11, 16, 32, .1); font: 500 12.5px/1.3 var(--mono) !important; color: var(--ink-2); }
 .p-head .p-list { margin-top: 26px; }
 .p-foot { margin-top: 64px; padding-top: 20px; border-top: 1px solid var(--line); font: 400 12px/1.5 var(--mono); color: var(--ink-3); }

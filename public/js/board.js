@@ -1,19 +1,22 @@
-// board.js — the canvas section: this site's own copy on a figjam-style board
-// (the gruntworks canvas vocabulary: frames, pastel stickies, cards, arrows,
-// reactions), with three simulated agent cursors working on it. they sort the
-// inbox into frames, type new stickies, draw arrows between related ideas,
-// react, tidy up after you, and occasionally rethink something. you can grab
-// cards too (mouse), and move around: wheel / two-finger scroll pans, pinch or
-// ctrl/cmd + wheel zooms, drag the background (with a flick), two-finger touch,
-// an "explore" mode for one-finger touch, the minimap, and the keyboard.
-// it opens at a reading zoom on the top row; "fit" shows everything.
+// board.js — the canvas section: this site, as one big map you pan and zoom.
+// the gruntworks canvas vocabulary: regions (frames with pastel title bars) holding
+// stickies, quotes, link / image / logo cards and chip rows, arrows between related
+// ideas, reactions, a dot grid, a minimap, and three simulated agent cursors at
+// work. they sort the inbox into regions, type new stickies, draw arrows, react,
+// tidy up after you, and occasionally rethink something. you can grab cards too
+// (mouse), and move around: wheel / two-finger scroll pans, pinch or ctrl/cmd +
+// wheel zooms, drag the background (with a flick), two-finger touch, an "explore"
+// mode for one-finger touch, the minimap, and the keyboard.
 //
 // everything runs on one clock that only ticks while the board is on screen
 // and the tab is visible, so the agents pause mid-gesture when you look away.
+// cards off screen are hidden (no paint), and zoomed out the cards fade to
+// blocks while each region's title grows, so the map stays readable and cheap.
 
 import { NODES } from './content.js';
 import { buildCard, INTERNAL } from './map-cards.js';
 import { md, strip } from './map-plain.js';
+import { adopt } from './grunts.js';
 import { rollLook, rollName, createMascotEngine, renderFrameToSvg } from './vendor/grunt-mascot.js';
 
 const board = document.querySelector('[data-board]');
@@ -24,66 +27,64 @@ const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 const ease = (u) => (u < 0.5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2);
 
-// ── the board ───────────────────────────────────────────────────────────
-// the articles open the top row: "how i build", with "on the side" and "now"
-// under it. next to them, the two "things i've made" frames (at exowatt, then on
-// my own time) and the inbox, so the agents' sorting stays on that side and never
-// carries a card across the words. the locked strip of things under nda runs
-// under that row, then "before" and writing, and ideas fill the bottom. phones
-// get the same frames stacked in four columns instead.
-//
-// articles are real html in index.html ([data-art]); boot() measures them and
-// lifts each into its frame. no card is ever sorted into or out of an article
-// frame or the locked strip; agents only point arrows at the articles and react
-// to them.
-const GAP = 14, HEAD = 54, M = 40, G = 40;
+// ── the map ─────────────────────────────────────────────────────────────
+// regions, in the order they read. wide: three rows of regions, like a desk you
+// lean over. phones: six one-region-wide columns. every card region is as tall
+// as everything that could ever live in it (measured), so nothing is ever
+// dropped. the locked strip never takes or gives a card.
+const GAP = 14, HEAD = 54, M = 48, G = 44;
 let CW = 236, CELL = 252; // card width, column pitch (set per layout at boot)
-const fw = (cols) => 32 + (cols - 1) * CELL + CW; // a card frame's width for n columns
+const fw = (cols) => 32 + (cols - 1) * CELL + CW; // a region's width for n columns
 const META = {
-  own: { title: "things i've made · on my own time", color: 'pink' },
+  vision: { title: 'how i build', color: 'yellow' },
+  now: { title: 'now · exowatt', color: 'blue' },
+  charles: { title: 'on the side · super charles', color: 'purple' },
   xmade: { title: "things i've made · at exowatt", color: 'blue' },
-  nda: { title: "things i've made · under nda", color: 'lock', locked: true },
+  own: { title: "things i've made · on my own time", color: 'pink' },
   inbox: { title: 'inbox', color: 'gray', inbox: true },
-  ideas: { title: 'ideas i keep coming back to', color: 'green' },
+  nda: { title: "things i've made · under nda", color: 'lock', locked: true },
+  'b-buildrfi': { title: 'before · buildrfi', color: 'white' },
+  'b-lula': { title: 'before · lula', color: 'white' },
+  'b-kabcash': { title: 'before · kabcash', color: 'white' },
+  'b-fiu': { title: 'before · fiu research', color: 'white' },
   writing: { title: 'writing', color: 'gray' },
-  vision: { art: 'vision' }, exowatt: { art: 'exowatt' }, charles: { art: 'charles' }, before: { art: 'before' },
+  games: { title: 'games i make', color: 'purple' },
+  links: { title: 'find me', color: 'white' },
+  ideas: { title: 'ideas i keep coming back to', color: 'green' },
+  stack: { title: 'tools', color: 'white', logos: true }, // a tighter grid: the cards are 96px logos
 };
-const ARTS = Object.fromEntries([...(board?.querySelectorAll('[data-art]') || [])].map((a) => [a.dataset.art, a]));
-// how wide each article is laid out, per layout
-const ART_W = { wide: { vision: 760, exowatt: 360, charles: 360, before: 1320 }, narrow: { vision: 320, exowatt: 320, charles: 320, before: 320 } };
-
-// wide: the articles | xmade | own | inbox, then the nda strip, then before | writing, then ideas
-function layoutWide(hArt, fill) {
-  const W2 = fw(2), A = ART_W.wide.vision, D = ART_W.wide.exowatt;
-  const hDuo = Math.max(hArt.exowatt, hArt.charles);
-  const H1 = Math.max(hArt.vision + G + hDuo, 860);
-  const xX = A + G, xO = xX + W2 + G, xI = xO + W2 + G;
-  const yN = H1 + G, HN = 236, y3 = yN + HN + G;
-  const H3 = Math.max(hArt.before, 660);
-  const y4 = y3 + H3 + G, W4 = xI + fw(1), H4 = fill('ideas', 8, W4);
-  return [
-    { id: 'vision', x: 0, y: 0, w: A, h: hArt.vision },
-    { id: 'charles', x: 0, y: hArt.vision + G, w: D, h: H1 - hArt.vision - G },
-    { id: 'exowatt', x: D + G, y: hArt.vision + G, w: D, h: H1 - hArt.vision - G },
-    { id: 'xmade', x: xX, y: 0, cols: 2, h: H1 },
-    { id: 'own', x: xO, y: 0, cols: 2, h: H1 },
-    { id: 'inbox', x: xI, y: 0, cols: 1, h: y3 + H3 },
-    { id: 'nda', x: 0, y: yN, cols: 1, w: xI - G, h: HN },
-    { id: 'before', x: 0, y: y3, w: xO - G, h: H3 },
-    { id: 'writing', x: xO, y: y3, cols: 2, h: H3 },
-    { id: 'ideas', x: 0, y: y4, cols: 8, w: W4, h: H4 },
-  ];
+// wide: row one is the reading row (how i build, now, on the side) with the made
+// regions and the inbox beside it; the locked strip runs under the reading row;
+// row two is before (one region per job), writing, games and find me; row three
+// is ideas and tools. the rows are offset a little, so it reads as a map, not a grid
+function layoutWide(need) {
+  const HN = 236;
+  const out = [];
+  const row = (y, items, x0 = 0) => { let x = x0; for (const [id, cols, h, w = fw(cols)] of items) { out.push({ id, x, y, cols, w, h }); x += w + G; } return x - G; };
+  const hRead = Math.max(need('vision', 2), need('now', 2), need('charles', 2), 380);
+  const hTall = Math.max(need('xmade', 2), need('own', 4), need('inbox', 2), hRead + G + HN);
+  const w1 = row(0, [['vision', 2, hRead], ['now', 2, hRead], ['charles', 2, hRead], ['xmade', 2, hTall], ['own', 4, hTall], ['inbox', 2, hTall]]);
+  out.push({ id: 'nda', x: 0, y: hRead + G, cols: 1, w: fw(2) * 3 + G * 2, h: HN });
+  const y2 = hTall + G + 24;
+  const h2 = (id, c) => Math.max(need(id, c), 380);
+  const r2 = [['b-buildrfi', 2, h2('b-buildrfi', 2)], ['b-lula', 1, h2('b-lula', 1)], ['b-kabcash', 1, h2('b-kabcash', 1)], ['b-fiu', 1, h2('b-fiu', 1)], ['writing', 2, h2('writing', 2)], ['games', 2, h2('games', 2)], ['links', 2, h2('links', 2)]];
+  row(y2, r2, 120);
+  const y3 = y2 + Math.max(...r2.map((r) => r[2])) + G + 24;
+  row(y3, [['ideas', 8, Math.max(need('ideas', 8), 520)], ['stack', 7, Math.max(need('stack', 7, fw(4)), 300), fw(4)]], 40);
+  void w1;
+  return out;
 }
-// narrow: four columns, one frame wide each. card frames are as tall as what they'll hold
-function layoutNarrow(hArt, need) {
+// narrow: six columns, one region wide each
+function layoutNarrow(need) {
   const FW = fw(1);
-  const COLS = [['vision', 'exowatt', 'charles', 'before'], ['xmade', 'nda', 'writing'], ['own', 'inbox'], ['ideas']];
+  const COLS = [['vision', 'now', 'charles', 'nda'], ['xmade', 'inbox'], ['own', 'games'], ['b-buildrfi', 'b-lula', 'b-kabcash', 'b-fiu'], ['writing', 'links', 'stack'], ['ideas']];
   const out = [];
   COLS.forEach((ids, i) => {
     let y = 0;
     for (const id of ids) {
-      const h = META[id].art ? hArt[id] : id === 'nda' ? 330 : need(id);
-      out.push({ id, x: i * (FW + G), y, w: FW, cols: 1, h });
+      const cols = META[id].logos ? 3 : 1;
+      const h = id === 'nda' ? 330 : need(id, cols, FW);
+      out.push({ id, x: i * (FW + G), y, w: FW, cols, h });
       y += h + G;
     }
   });
@@ -91,32 +92,45 @@ function layoutNarrow(hArt, need) {
 }
 let FRAMES = [], frameOf = {};
 const WORLD = { w: 0, h: 0 };
-// cluster -> frame, plus a few cards that live somewhere other than their cluster's frame
-const HOME = { vision: 'ideas', me: 'ideas', work: 'ideas', exowatt: 'xmade', xmade: 'xmade', charles: 'own', things: 'own', games: 'own', stack: 'xmade', ideas: 'ideas', writing: 'writing' };
-const PIN = { 'c-link': 'own', 'l-three': 'xmade', 'v-already': 'xmade', 'c-know': 'ideas' };
+// cluster -> region, plus cards that live somewhere other than their cluster's region
+const HOME = { me: 'links', vision: 'vision', exowatt: 'now', xmade: 'xmade', charles: 'charles', work: 'ideas', things: 'own', games: 'games', ideas: 'ideas', writing: 'writing', before: 'b-buildrfi', stack: 'stack', links: 'links' };
+const PIN = { 'b-lula': 'b-lula', 'b-lula-tags': 'b-lula', 'b-lula-did': 'b-lula', 'b-lula-uw': 'b-lula', 'b-kabcash': 'b-kabcash', 'b-kabcash-tags': 'b-kabcash', 'b-kabcash-did': 'b-kabcash', 'b-fiu-ml': 'b-fiu', 'b-fiu-tags': 'b-fiu', 'b-fiu-did': 'b-fiu', 'v-already': 'xmade' };
 const homeOf = (id) => frameOf[PIN[id] || HOME[byId[id].cluster]];
 
+// what's on the map at load, by region. the inbox holds what the agents will sort
 const START = {
-  xmade: ['x-platform', 'x-ems', 'x-ade', 'x-twins', 'l-three'],
-  own: ['c-link', 't-skills', 'g-lotfg', 't-voice', 't-deck'],
-  inbox: ['x-patents', 't-pokemon', 'v-already', 't-carecart', 'c-mini'],
+  vision: ['v-love', 'v-lot', 'v-hard', 'v-mountain', 'v-touch', 'v-going'],
+  now: ['x-logo', 'x-p3', 'x-role', 'x-build'],
+  charles: ['c-link', 'c-db', 'c-what', 'c-mini'],
+  xmade: ['x-platform', 'x-ems', 'x-ade', 'x-twins', 'x-browser'],
+  own: ['t-skills', 't-voice', 't-deck', 't-jev', 't-orca', 't-vibe', 't-shellhacks', 't-carecart', 't-galactic', 't-ascii', 't-gradient'],
+  inbox: ['x-patents', 't-pokemon', 'v-already', 'c-chief', 'g-kotf', 'r-dems'],
+  'b-buildrfi': ['b-lead', 'b-buildrfi', 'b-buildrfi-tags', 'b-buildrfi-did', 'b-photo'],
+  'b-lula': ['b-lula', 'b-lula-tags', 'b-lula-did'],
+  'b-kabcash': ['b-kabcash', 'b-kabcash-tags', 'b-kabcash-did'],
+  'b-fiu': ['b-fiu-ml', 'b-fiu-tags', 'b-fiu-did'],
+  writing: ['r-blog', 'r-breadth', 'r-founders', 'r-china', 'r-mini'],
+  games: ['g-lotfg', 'g-lotfg2', 'g-iron', 'g-crafty', 'g-kakariko'],
+  links: ['f-mail', 'f-github', 'f-x', 'f-in', 'f-skills', 'f-llms', 'miami', 'fiu'],
   ideas: ['i-build', 'i-breadth', 'i-own', 'i-loop', 'i-bounded', 'i-files', 'i-dead', 'i-undo', 'i-quiet', 'i-typed', 'i-protocols',
     'i-loud', 'i-algo', 'i-decade', 'i-data', 'i-operator', 'i-tenyear', 'i-friends', 'i-founders', 'i-block', 'i-kobe'],
-  writing: ['r-dems', 'r-breadth', 'r-founders', 'r-china', 'r-mini'],
+  stack: ['l-ts', 'l-react', 'l-three', 'l-unity', 'l-rust', 'l-python', 'l-swift', 'l-pg', 'l-bun', 'l-expo', 'l-claude', 'l-next', 'l-torch', 'l-godot'],
 };
-// notes the agents can write from scratch, typed out a letter at a time (the first three are in the still life)
-const POOL = ['x-browser', 'x-sim', 'x-teammates', 'v-touch', 'c-chief', 'i-kb', 'r-data', 'c-know', 'w-proof', 'w-breadth', 'i-cli', 'i-colossus'];
+// notes the agents can write from scratch, typed out a letter at a time (stickies only; the first three are in the still life)
+const POOL = ['x-sim', 'x-teammates', 'b-buildrfi-parse', 'v-cheap', 'c-mcp', 'c-know', 'x-interns', 'w-proof', 'w-breadth', 'i-kb', 'r-data', 'b-lula-uw', 'g-mc', 'i-cli', 'i-colossus', 'b-disgo'];
 // the things i've made: written first, never erased
-const KEEP = new Set(['x-platform', 'x-ems', 'x-patents', 'x-twins', 'x-ade', 'x-browser', 'c-link', 't-skills', 't-voice', 't-deck', 'g-lotfg', 't-pokemon', 't-carecart']);
-// arrows worth drawing, when both ends are on the board. "@id" is an article frame.
-// the first five are in the still life. none of them run underneath an article
+const KEEP = new Set(['x-sim', 'x-teammates', 'b-buildrfi-parse', 'b-lula-uw', 'g-mc', 'b-disgo', 'x-interns']);
+// arrows worth drawing, when both ends are on the map. the first six are drawn at load
 const LINKS = [
-  ['x-ade', '@vision', 'the agents'], ['x-twins', 'l-three', 'built with'], ['x-platform', '@exowatt', 'runs on it'],
-  ['x-patents', 'x-sim', 'the research'], ['x-browser', 'x-ade', 'for its agents'], ['c-mini', 'c-link', 'runs on'],
-  ['x-sim', 'x-teammates'], ['t-carecart', 't-pokemon', 'also 2020'], ['c-chief', 'c-link'],
+  ['x-ade', 'v-lot', 'the agents'], ['x-build', 'x-platform', 'runs on it'], ['b-photo', 'b-buildrfi-tags', 'metaprop'],
+  ['i-loop', 't-jev', 'how jev works'], ['c-mini', 'c-link', 'runs on'], ['x-logo', 'v-hard', 'hardware'],
+  ['x-twins', 'l-three', 'built with'], ['x-patents', 'x-sim', 'the research'], ['x-browser', 'x-ade', 'for its agents'],
+  ['x-sim', 'x-teammates'], ['t-carecart', 't-pokemon', 'also 2020'], ['c-chief', 'c-link'], ['x-teammates', 'c-chief', 'same idea, at home'],
   ['i-breadth', 'r-breadth', 'wrote about it'], ['i-founders', 'r-founders'], ['r-mini', 'c-mini', 'the post'],
-  ['i-bounded', 'c-chief', 'the contract'], ['i-undo', 'i-bounded'], ['i-loop', 'i-typed'], ['i-protocols', 'i-algo'],
-  ['i-own', '@before', 'end to end'], ['i-quiet', 't-deck'], ['w-breadth', 'i-breadth'], ['i-decade', 'i-tenyear'],
+  ['i-bounded', 'c-chief', 'the contract'], ['i-undo', 'i-bounded'], ['i-protocols', 'i-algo'], ['v-already', 'x-ems', 'already here'],
+  ['i-own', 'b-buildrfi-did', 'end to end'], ['i-quiet', 't-deck'], ['w-breadth', 'i-breadth'], ['i-decade', 'i-tenyear'],
+  ['b-kabcash-did', 'l-react'], ['b-fiu-did', 't-pokemon', 'same era'], ['g-lotfg2', 'l-unity'], ['t-skills', 'f-skills'],
+  ['c-db', 'l-pg'], ['t-shellhacks', 't-carecart'], ['v-cheap', 'v-already'], ['g-kakariko', 'l-three'], ['b-lead', 'b-lula'],
 ];
 const EMOJI = ['🔥', '⚡', '✨', '👀', '🙌', '💡'];
 const SAY = {
@@ -139,23 +153,21 @@ function el(tag, cls, html) { const e = document.createElement(tag); if (cls) e.
 function svg(tag, attrs = {}) { const e = document.createElementNS('http://www.w3.org/2000/svg', tag); for (const k in attrs) e.setAttribute(k, attrs[k]); return e; }
 
 const LOCK = '<svg class="lk" viewBox="0 0 24 24" aria-hidden="true"><path d="M5.5 11h13v10h-13zM8 11V7.5a4 4 0 0 1 8 0V11"/></svg>';
-// article frames, by "@id": arrows and reactions can point at them, nothing moves in or out
-const anchors = new Map();
-const itemOf = (id) => cards.get(id) || anchors.get(id);
+const itemOf = (id) => cards.get(id);
+const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 function buildFrames() {
   for (const f of FRAMES) {
-    f.el = el('div', `frame${f.inbox ? ' inbox' : ''}${f.locked ? ' locked' : ''}${f.art ? ' article' : ''}`);
+    f.el = el('div', `frame${f.inbox ? ' inbox' : ''}${f.locked ? ' locked' : ''}`);
     f.el.dataset.color = f.color;
     f.el.dataset.frame = f.id;
     Object.assign(f.el.style, { left: `${f.x}px`, top: `${f.y}px`, width: `${f.w}px`, height: `${f.h}px` });
-    if (f.art) {
-      f.art.style.width = '';
-      f.el.append(f.art);
-      anchors.set(`@${f.id}`, { id: `@${f.id}`, anchor: true, frame: f, el: f.el, x: f.x, y: f.y, w: f.w, h: f.h, lock: null, react: null });
-    } else {
-      f.el.innerHTML = f.locked ? lockedFrame(f) : `<div class="ft"><span>${f.title}</span>${f.inbox ? '<b class="count">0</b>' : ''}</div>`;
+    if (f.locked) f.el.innerHTML = lockedFrame(f);
+    else {
+      // the title bar, plus the same title big, for when you're zoomed out (css shows one or the other)
+      f.el.innerHTML = `<div class="ft"><span>${esc(f.title)}</span>${f.inbox ? '<b class="count">0</b>' : ''}</div><div class="big" aria-hidden="true">${esc(f.title)}</div>`
+        + (f.id === 'now' ? '<span class="grunt g-perch" data-grunt="collin:site:2" data-size="62" data-move="bob" data-moods="curious,happy,wink"></span>' : '');
     }
-    world.insertBefore(f.el, cursorLayer); // above the arrows, under the cards
+    world.insertBefore(f.el, edgeSvg); // under the arrows, which run under the cards
   }
   board.querySelector('.arts')?.remove();
 }
@@ -200,6 +212,7 @@ ui.innerHTML = `
   <div class="minimap" aria-hidden="true" title="drag to move around the board"><div class="mv"></div></div>
   <div class="dock">
     <p class="sim"><i></i>simulated<span class="sim-x"> agents</span></p>
+    <p class="pan-hint" aria-hidden="true">click to scroll inside · <kbd>${/mac|iphone|ipad/i.test(navigator.platform) ? '⌘' : 'ctrl'}</kbd> + scroll zooms</p>
     <button type="button" class="mode follow" aria-pressed="false"><i></i>follow agents</button>
     <button type="button" class="mode explore" aria-pressed="false" title="one-finger drag moves the board, tap again to scroll the page"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18M3 12h18M12 3l-3 3M12 3l3 3M12 21l-3-3M12 21l3-3M3 12l3-3M3 12l3 3M21 12l-3-3M21 12l-3 3"/></svg>explore</button>
   </div>`;
@@ -209,16 +222,19 @@ const toolEl = Object.fromEntries([...ui.querySelectorAll('.tool')].map((t) => [
 
 // ── cards ───────────────────────────────────────────────────────────────
 const cards = new Map(); // id -> card
+const cardW = (node) => (node.type === 'logo' ? 96 : node.big && !narrowLayout ? CW + CELL : CW);
+const spanOf = (node) => (node.big && !narrowLayout ? 2 : 1);
 function makeCard(id, { empty = false } = {}) {
   const node = byId[id];
   const e = buildCard(node);
   e.classList.add('bcard');
-  e.style.width = `${node.type === 'logo' ? 96 : CW}px`;
+  e.style.width = `${cardW(node)}px`;
   e.querySelectorAll('a').forEach((a) => a.setAttribute('tabindex', '-1'));
   if (empty) e.querySelector('.in').innerHTML = `<span class="typed"></span><span class="caret"></span>${node.internal ? INTERNAL : ''}`;
   world.insertBefore(e, cursorLayer);
-  const c = { id, node, el: e, x: 0, y: 0, tx: 0, ty: 0, w: e.offsetWidth, h: e.offsetHeight, frame: null, lock: null, free: false, written: false, react: null, shownX: NaN, shownY: NaN };
+  const c = { id, node, el: e, x: 0, y: 0, tx: 0, ty: 0, w: cardW(node), h: heightOf[id] || (empty ? 90 : e.offsetHeight), frame: null, lock: null, free: false, written: false, react: null, shownX: NaN, shownY: NaN, culled: false };
   cards.set(id, c);
+  if (node.grunt) adopt(e);
   return c;
 }
 
@@ -230,7 +246,7 @@ function measureCards() {
   const els = ids.map((id) => {
     const e = buildCard(byId[id]);
     e.classList.add('bcard', 'measure');
-    e.style.width = `${byId[id].type === 'logo' ? 96 : CW}px`;
+    e.style.width = `${cardW(byId[id])}px`;
     world.append(e);
     return e;
   });
@@ -242,16 +258,19 @@ function slots(f, list = f.cards) {
   const col = Array.from({ length: f.cols }, () => f.y + HEAD + 12);
   const out = new Map();
   for (const c of list) {
-    let k = 0;
-    for (let i = 1; i < f.cols; i++) if (col[i] < col[k] - 0.5) k = i;
-    const cx = f.x + 16 + k * f.cell + (c.node.type === 'logo' ? (CW - 96) / 2 : 0);
-    out.set(c, { x: cx, y: col[k] });
-    col[k] += (c.h || heightOf[c.id] || 90) + GAP;
+    const span = Math.min(f.cols, spanOf(c.node));
+    // the shortest run of `span` columns (a two-column card waits for both)
+    let k = 0, best = Infinity;
+    for (let i = 0; i + span <= f.cols; i++) { let top = -Infinity; for (let j = i; j < i + span; j++) top = Math.max(top, col[j]); if (top < best - 0.5) { best = top; k = i; } }
+    const cx = f.x + 16 + k * f.cell + (c.node.type === 'logo' && !f.logos ? (CW - 96) / 2 : 0);
+    out.set(c, { x: cx, y: best });
+    const bottom = best + (c.h || heightOf[c.id] || 90) + GAP;
+    for (let j = k; j < k + span; j++) col[j] = bottom;
   }
   return { out, bottom: Math.max(...col) - GAP };
 }
 function fits(f, extra) {
-  if (f.locked || f.art) return false;
+  if (!f || f.locked) return false;
   const probe = [...f.cards, extra];
   return slots(f, probe).bottom <= f.y + f.h - 14;
 }
@@ -286,7 +305,7 @@ function drawEdge(e, p, q) {
   e.head.setAttribute('d', `M${q.x.toFixed(1)} ${q.y.toFixed(1)} L${(q.x + Math.cos(a1) * s).toFixed(1)} ${(q.y + Math.sin(a1) * s).toFixed(1)} L${(q.x + Math.cos(a2) * s).toFixed(1)} ${(q.y + Math.sin(a2) * s).toFixed(1)} Z`);
   if (e.lab) {
     // a pill on a short arrow just covers it, so short arrows go without
-    e.lab.classList.toggle('short', Math.hypot(q.x - p.x, q.y - p.y) < 130);
+    e.lab.classList.toggle('short', Math.hypot(q.x - p.x, q.y - p.y) < 190);
     const mx = 0.25 * p.x + 0.5 * c.x + 0.25 * q.x, my = 0.25 * p.y + 0.5 * c.y + 0.25 * q.y;
     e.lab.style.transform = `translate(${mx.toFixed(1)}px, ${my.toFixed(1)}px) translate(-50%, -50%)`;
   }
@@ -408,10 +427,10 @@ const ACTIONS = {
   // take a card out of the inbox and file it in its frame
   sort: {
     weight: () => (frameOf.inbox.cards.some(free) ? 4 : 0),
-    async run(a) {
+    async run(a, pref) {
       const choices = frameOf.inbox.cards.filter((c) => free(c) && fits(homeOf(c.id), c));
       if (!choices.length) return false;
-      const c = choices[0];
+      const c = choices.find((x) => x.id === pref) || choices[0];
       const f = homeOf(c.id);
       c.lock = a;
       await dragTo(a, c, f, 'sort');
@@ -421,9 +440,9 @@ const ACTIONS = {
   // write a new sticky from scratch
   write: {
     weight: () => (writable().length ? 3 : 0),
-    async run(a) {
+    async run(a, pref) {
       const ids = writable(), keep = ids.filter((x) => KEEP.has(x));
-      const id = pick(keep.length ? keep : ids);
+      const id = ids.includes(pref) ? pref : pick(keep.length ? keep : ids);
       if (!id) return false;
       const f = homeOf(id);
       const probe = { id, node: byId[id], h: heightOf[id] };
@@ -459,8 +478,9 @@ const ACTIONS = {
   // draw an arrow between two related cards
   connect: {
     weight: () => (linkable().length ? 2.5 : 0),
-    async run(a) {
-      const [ia, ib, label] = pick(linkable()) || [];
+    async run(a, pref) {
+      const can = linkable();
+      const [ia, ib, label] = (pref && can.find((l) => l[0] === pref[0] && l[1] === pref[1])) || pick(can) || [];
       const A = itemOf(ia), B = itemOf(ib);
       if (!onBoard(A) || !onBoard(B)) return false;
       A.lock = a; B.lock = a;
@@ -484,16 +504,14 @@ const ACTIONS = {
       return true;
     },
   },
-  // leave a reaction on something: a card, or now and then one of the articles
+  // leave a reaction on a card
   react: {
     weight: () => 1.2,
     async run(a) {
-      const arts = [...anchors.values()].filter((c) => free(c) && (!c.react || c.react.n < 4));
-      const list = Math.random() < 0.3 && arts.length ? arts : [...cards.values()].filter((c) => onBoard(c) && (!c.react || c.react.n < 3));
-      const c = pick(list);
+      const c = pick([...cards.values()].filter((c) => onBoard(c) && (!c.react || c.react.n < 3)));
       if (!c) return false;
       c.lock = a;
-      await move(a, c.x + c.w - (c.anchor ? 26 : 18), c.y + (c.anchor ? 4 : 10), { speed: 760 });
+      await move(a, c.x + c.w - 18, c.y + 10, { speed: 760 });
       await press(a);
       if (!c.react) {
         c.react = { e: pick(EMOJI), n: 0, el: el('span', 'react') };
@@ -588,7 +606,7 @@ async function dragTo(a, c, f, kind) {
 }
 
 async function typeInto(a, c) {
-  const text = strip(c.node.text);
+  const text = strip(c.node.text || '');
   const typed = c.el.querySelector('.typed');
   for (let i = 1; i <= text.length; i++) {
     typed.textContent = text.slice(0, i);
@@ -598,18 +616,28 @@ async function typeInto(a, c) {
   c.el.querySelector('.in').innerHTML = md(c.node.text) + (c.node.internal ? INTERNAL : '');
 }
 
-// mostly over the card frames; now and then past an article, never over the locked strip
+// over the regions, never over the locked strip
 async function wander(a) {
-  const f = pick(FRAMES.filter((F) => !F.locked && (!F.art || Math.random() < 0.25)));
+  const f = pick(FRAMES.filter((F) => !F.locked));
   await move(a, rand(f.x + 20, f.x + f.w - 20), rand(f.y + 50, f.y + f.h - 30), { speed: 360, arc: 0.3 });
 }
 
+// the first thing each agent does happens where the map opens: a note typed into
+// "how i build", a card sorted into "on the side", an arrow between now and how i build
+const OPENING = [['write', 'v-cheap'], ['sort', 'c-chief'], ['connect', ['x-logo', 'v-hard', 'hardware']]];
 let warned = false;
 async function life(a) {
-  await wait(400 + a.i * 900);
+  await wait(400 + a.i * 1400);
+  let first = OPENING[a.i];
   for (;;) {
     const opts = Object.entries(ACTIONS).map(([k, v]) => [k, v.weight()]).filter(([, w]) => w > 0);
     let did = false;
+    if (first) {
+      const [name, pref] = first; first = null;
+      a.last = clock;
+      try { did = await ACTIONS[name].run(a, pref); } catch (err) { did = false; if (!warned) { warned = true; console.warn('canvas: an agent tripped', err); } }
+      if (did) { focusOn = a; await wait(rand(500, 1200)); continue; }
+    }
     if (opts.length && Math.random() < 0.86) {
       let r = Math.random() * opts.reduce((s, [, w]) => s + w, 0);
       const [name] = opts.find(([, w]) => (r -= w) < 0) || opts[0];
@@ -648,18 +676,22 @@ function clampTargets() {
 }
 function snap() { view.x = view.tx; view.y = view.ty; view.z = view.tz; }
 function freeze() { view.tx = view.x; view.ty = view.y; view.tz = view.z; view.vx = view.vy = 0; }
-// the reading view: ~100% with the top row at the top. a wide board shows "how i
-// build" and things i've made at exowatt next to it (and on my own time too, if
-// it fits); a phone shows the first column, the articles
+// the opening view: the reading row, how i build, now and on the side, side by
+// side with their titles, zoomed so all three fit (a wider board shows the exowatt
+// region too). a phone opens on the first column, a little zoomed out, with the
+// next column showing at the edge so it reads as a map
+const Z_HOME = [0.5, 0.82];
 function home(instant = false) {
-  const V = frameOf.vision, X = frameOf.xmade, O = frameOf.own;
-  let z = 1, x0 = V.x, x1 = V.x + V.w;
-  if (narrowLayout) z = clamp((size.w - 28) / V.w, 0.6, 1);
-  else if (size.w - 64 >= O.x + O.w - V.x) x1 = O.x + O.w;
-  else { x1 = X.x + X.w; z = clamp((size.w - 44) / (x1 - x0), 0.72, 1); }
+  const V = frameOf.vision, C = frameOf.charles, X = frameOf.xmade;
+  let z, x0 = V.x, x1 = C.x + C.w;
+  if (narrowLayout) { z = clamp((size.w - 24) / (V.w * 1.32), 0.56, 0.78); view.tx = 16 - V.x * z; }
+  else {
+    z = clamp((size.w - 56) / (x1 - x0), Z_HOME[0], Z_HOME[1]);
+    if ((size.w - 56) / (X.x + X.w - x0) >= 0.62) { x1 = X.x + X.w; z = clamp((size.w - 56) / (x1 - x0), Z_HOME[0], Z_HOME[1]); }
+    view.tx = size.w / 2 - ((x0 + x1) / 2) * z;
+  }
   view.tz = z;
-  view.tx = size.w / 2 - ((x0 + x1) / 2) * z;
-  view.ty = (narrowLayout ? 60 : 68) - V.y * z;
+  view.ty = (narrowLayout ? 48 : 60) - V.y * z;
   clampTargets();
   view.mode = 'home'; view.rate = 6; view.vx = view.vy = 0;
   if (instant || reduce) snap();
@@ -713,6 +745,7 @@ exploreBtn.addEventListener('click', () => {
   explore = !explore;
   exploreBtn.setAttribute('aria-pressed', String(explore));
   board.classList.toggle('explore', explore);
+  engage(explore);
 });
 
 // flick velocity from the last ~100ms of a drag
@@ -737,6 +770,7 @@ board.addEventListener('pointerdown', (e) => {
   // links, buttons and the little guys keep their own clicks
   if (e.button !== 0 || e.pointerType === 'touch' || e.target.closest('.ui, a, button, .grunt')) return;
   board.focus({ preventScroll: true });
+  engage(true);
   const { sx, sy } = boardPoint(e);
   const cardEl = e.target.closest('.bcard');
   if (cardEl) {
@@ -779,7 +813,7 @@ function endPointer(e) {
     // dropped inside a frame with room: it lives there now. anywhere else: it's loose, and someone will tidy it
     const moved = Math.hypot(c.x - userDrag.x0, c.y - userDrag.y0);
     const cx = c.x + c.w / 2, cy = c.y + c.h / 2;
-    const f = FRAMES.find((F) => !F.locked && !F.art && cx > F.x && cx < F.x + F.w && cy > F.y && cy < F.y + F.h);
+    const f = FRAMES.find((F) => !F.locked && cx > F.x && cx < F.x + F.w && cy > F.y && cy < F.y + F.h);
     if (moved < 5 && userDrag.orig) { const o = userDrag.orig; o.f.cards.splice(o.i, 0, c); c.frame = o.f; relayout(o.f); }
     else if (f && fits(f, c)) attach(c, f); else c.free = true;
     userDrag = null;
@@ -793,25 +827,36 @@ board.addEventListener('pointerup', endPointer);
 board.addEventListener('pointercancel', endPointer);
 
 // ── wheel and trackpad ──────────────────────────────────────────────────
-// the rule, so the board never traps the page:
+// the rule, so the board never gets in the way of reading the page:
+//  · plain vertical scrolling over the board scrolls the page. always, until you
+//    take hold of the board: a click or drag on it, focusing it, or explore mode.
+//    (a visitor scrolling down to the next section must never find themselves
+//    panning a hidden board instead.) the pointer leaving the board lets go.
 //  · a wheel "gesture" is a run of wheel events less than REST (250ms) apart,
-//    trackpad momentum included.
-//  · the board only captures a gesture that *starts* with the pointer over it
-//    and the page at rest for REST, i.e. the pointer has been resting on a
-//    still board. a fast page scroll that slides the board under the pointer
-//    started elsewhere, so the whole gesture keeps scrolling the page.
-//  · inside a captured gesture, a mostly-vertical scroll falls through to the
-//    page once the board is panned to its edge in that direction. sideways
-//    scrolls stay on the board (the page doesn't scroll sideways, and it keeps
-//    the browser's back-swipe from firing).
+//    trackpad momentum included; it's decided once, at its start.
+//  · a clearly sideways gesture pans the board whether you hold it or not (the
+//    page doesn't scroll sideways, and it keeps the browser's back-swipe from firing).
+//  · once held, a mostly-vertical scroll still falls through to the page when the
+//    board is panned to its edge in that direction.
 //  · pinch (ctrl + wheel in chrome and firefox, gesture events in safari) and
 //    ctrl/cmd + wheel always zoom the board at the pointer.
-const REST = 250, STILL = 600; // gap that ends a wheel gesture · how long the page must be still before the board takes one
-let wheelAt = -1e9, scrollAt = -1e9, wheelOwned = false;
-addEventListener('scroll', () => { scrollAt = performance.now(); }, { passive: true });
+const REST = 250;
+let wheelAt = -1e9, wheelOwned = false, engaged = false;
+function engage(on) {
+  if (engaged === on) return;
+  engaged = on;
+  board.classList.toggle('engaged', on);
+}
+board.addEventListener('pointerleave', (e) => { if (e.pointerType !== 'touch' && !explore) engage(false); });
+board.addEventListener('focus', () => engage(true));
+board.addEventListener('blur', () => { if (!board.matches(':hover') && !explore) engage(false); });
 addEventListener('wheel', (e) => {
   const now = performance.now();
-  if (now - wheelAt > REST) wheelOwned = board.contains(e.target) && !e.target.closest('.ui') && now - scrollAt > STILL;
+  if (now - wheelAt > REST) {
+    const over = board.contains(e.target) && !e.target.closest('.ui');
+    const sideways = Math.abs(e.deltaX) > Math.abs(e.deltaY) * 1.4;
+    wheelOwned = over && (engaged || explore || sideways);
+  }
   wheelAt = now;
 }, { passive: true, capture: true });
 board.addEventListener('wheel', (e) => {
@@ -889,10 +934,10 @@ const mini = ui.querySelector('.minimap'), miniView = mini.querySelector('.mv');
 const pct = (v, of) => `${((v / of) * 100).toFixed(2)}%`;
 function buildMinimap() {
   // as big as fits in its corner, keeping the world's shape
-  const k = Math.min((narrowLayout ? 72 : 168) / WORLD.w, (narrowLayout ? 104 : 150) / WORLD.h);
+  const k = Math.min((narrowLayout ? 84 : 190) / WORLD.w, (narrowLayout ? 110 : 140) / WORLD.h);
   Object.assign(mini.style, { width: `${Math.round(WORLD.w * k)}px`, height: `${Math.round(WORLD.h * k)}px` });
   for (const f of FRAMES) {
-    const r = el('span', `mf${f.inbox ? ' inbox' : ''}${f.art ? ' art' : ''}`);
+    const r = el('span', `mf${f.inbox ? ' inbox' : ''}`);
     r.dataset.color = f.color;
     Object.assign(r.style, { left: pct(f.x, WORLD.w), top: pct(f.y, WORLD.h), width: pct(f.w, WORLD.w), height: pct(f.h, WORLD.h) });
     mini.insertBefore(r, miniView);
@@ -913,6 +958,7 @@ function scrubTo(e, direct) {
 mini.addEventListener('pointerdown', (e) => {
   if (e.button !== 0) return;
   scrub = { id: e.pointerId };
+  engage(true);
   mini.setPointerCapture(e.pointerId);
   mini.classList.add('scrubbing');
   scrubTo(e, false);
@@ -947,7 +993,7 @@ ui.querySelector('.zoom').addEventListener('click', (e) => {
   zoomAt(b.dataset.z === '+' ? 1.2 : 1 / 1.2, size.w / 2, size.h / 2);
 });
 
-// the articles' links and the request button live on the board, so tabbing to one
+// the cards' links and the request button live on the board, so tabbing to one
 // brings it into view. (the board clips with overflow: hidden, which the browser
 // would otherwise scroll to show a focused child, knocking the world out of place)
 board.addEventListener('scroll', () => { board.scrollTop = 0; board.scrollLeft = 0; });
@@ -963,13 +1009,35 @@ board.addEventListener('focusin', (e) => {
 
 // ── frame loop ──────────────────────────────────────────────────────────
 const zpct = ui.querySelector('.zpct');
-let last = performance.now(), miniKey = '';
+let last = performance.now(), miniKey = '', lodKey = '', cullKey = '';
+const CULL = 260; // world px beyond the edge a card stays painted
+// zoomed out, cards fade to blocks and the region titles grow (css reads these)
+function lod() {
+  const z = view.z;
+  const level = z < 0.3 ? 'low' : z < 0.52 ? 'mid' : 'full';
+  const iz = clamp(1 / z, 1, 4.5);
+  const key = `${level}|${iz.toFixed(2)}`;
+  if (key === lodKey) return;
+  lodKey = key;
+  board.dataset.lod = level;
+  board.style.setProperty('--iz', iz.toFixed(3));
+}
+// cards outside the view (plus a margin) aren't painted at all
+function cull() {
+  const x0 = -view.x / view.z - CULL, y0 = -view.y / view.z - CULL, x1 = x0 + size.w / view.z + 2 * CULL, y1 = y0 + size.h / view.z + 2 * CULL;
+  for (const c of cards.values()) {
+    const out = c.x + c.w < x0 || c.x > x1 || c.y + c.h < y0 || c.y > y1;
+    if (out !== c.culled) { c.culled = out; c.el.style.visibility = out && !c.carried ? 'hidden' : ''; }
+  }
+}
 function render() {
   world.style.transform = `translate(${view.x.toFixed(2)}px, ${view.y.toFixed(2)}px) scale(${view.z.toFixed(4)})`;
   board.style.setProperty('--gx', `${view.x.toFixed(1)}px`);
   board.style.setProperty('--gy', `${view.y.toFixed(1)}px`);
   board.style.setProperty('--gs', `${(22 * view.z).toFixed(2)}px`);
-  zpct.textContent = `${Math.round(view.z * 100)}%`;
+  const pctTxt = `${Math.round(view.z * 100)}%`;
+  if (zpct.textContent !== pctTxt) zpct.textContent = pctTxt;
+  lod();
   for (const c of cards.values()) {
     if (!(Math.abs(c.x - c.shownX) <= 0.05 && Math.abs(c.y - c.shownY) <= 0.05)) {
       c.el.style.transform = `translate(${c.x.toFixed(1)}px, ${c.y.toFixed(1)}px)`;
@@ -988,6 +1056,9 @@ function render() {
     miniKey = key;
     Object.assign(miniView.style, { left: pct(vx, WORLD.w), top: pct(vy, WORLD.h), width: pct(vw, WORLD.w), height: pct(vh, WORLD.h) });
   }
+  // cull when the view moved a card's width, or a card moved (agents carry them in and out)
+  const ck = `${(vx / 60) | 0},${(vy / 60) | 0},${(vw / 60) | 0},${cards.size}`;
+  if (ck !== cullKey || active) { cullKey = ck; cull(); }
   updateEdges();
 }
 function tick(now) {
@@ -1028,34 +1099,29 @@ function place(id, f) {
   else { c.el.remove(); cards.delete(id); dropped.push(id); return null; }
   return c;
 }
-// lay the board out for this size: measure the articles at their widths and every
-// card that could land, pick the wide or the phone layout, then build the frames
+// lay the map out for this size: measure every card that could land, pick the
+// wide or the phone layout, size each region to hold everything it could, then
+// build the regions
 let narrowLayout = false;
+// column pitch: the columns spread to fill the region, with the same 16px inset as the rest
+const pitch = (meta, cols, w) => (cols > 1 ? (w - 32 - (meta.logos ? 96 : CW)) / (cols - 1) : CELL);
 function layout() {
   narrowLayout = narrow();
   board.classList.toggle('narrow', narrowLayout);
   CW = narrowLayout ? 288 : 236; CELL = CW + 16;
-  const widths = ART_W[narrowLayout ? 'narrow' : 'wide'];
-  const hArt = {};
-  // (+4: the frame's 2px border sits inside its box)
-  for (const [id, a] of Object.entries(ARTS)) { a.style.width = `${widths[id] - 4}px`; hArt[id] = Math.ceil(a.offsetHeight) + 4; }
   measureCards();
   const homeId = (id) => PIN[id] || HOME[byId[id].cluster];
-  // a phone's card frames are one column, as tall as everything that could live there
-  const need = (fid) => Math.ceil(HEAD + 12 + need.ids(fid).reduce((s, id) => s + heightOf[id] + GAP, 0) + (fid === 'inbox' ? 260 : 0) + 20);
-  need.ids = (fid) => (fid === 'inbox' ? START.inbox : [...(START[fid] || []), ...START.inbox.filter((id) => homeId(id) === fid), ...POOL.filter((id) => homeId(id) === fid)]);
-  // how tall a frame of n columns must be to hold everything that could live there
-  const fill = (fid, cols, w) => {
-    const probe = need.ids(fid).map((id) => ({ id, node: byId[id], h: heightOf[id] }));
-    return Math.ceil(slots({ x: 0, y: 0, cols, cell: (w - 32 - CW) / (cols - 1) }, probe).bottom + 24);
+  const ids = (fid) => (fid === 'inbox' ? START.inbox : [...(START[fid] || []), ...START.inbox.filter((id) => homeId(id) === fid), ...POOL.filter((id) => homeId(id) === fid)]);
+  // how tall a region of n columns must be to hold everything that could live there
+  const need = (fid, cols, w = fw(cols)) => {
+    const probe = ids(fid).map((id) => ({ id, node: byId[id], h: heightOf[id] }));
+    return Math.ceil(slots({ x: 0, y: 0, cols, cell: pitch(META[fid], cols, w), logos: META[fid].logos }, probe).bottom + (fid === 'inbox' ? 120 : 28));
   };
-  const L = narrowLayout ? layoutNarrow(hArt, need) : layoutWide(hArt, fill);
+  const L = narrowLayout ? layoutNarrow(need) : layoutWide(need);
   FRAMES = L.map((p) => {
-    const meta = META[p.id], art = meta.art ? ARTS[meta.art] : null;
+    const meta = META[p.id];
     const w = p.w || fw(p.cols);
-    const cols = art ? 1 : p.cols;
-    // columns spread to fill wider frames, with the same 16px inset as the rest
-    return { ...meta, ...p, art, color: art ? art.dataset.color : meta.color, cols, x: p.x + M, y: p.y + M, w, cell: cols > 1 ? (w - 32 - CW) / (cols - 1) : CELL, cards: [] };
+    return { ...meta, ...p, x: p.x + M, y: p.y + M, w, cell: pitch(meta, p.cols, w), cards: [] };
   });
   frameOf = Object.fromEntries(FRAMES.map((f) => [f.id, f]));
   WORLD.w = Math.max(...FRAMES.map((f) => f.x + f.w)) + M;
@@ -1069,12 +1135,12 @@ function boot() {
   layout();
   for (const [fid, ids] of Object.entries(START)) for (const id of ids) place(id, frameOf[fid]);
   board.dataset.dropped = dropped.join(' '); // for the shots tool: anything that didn't fit at load
-  // and for the shots tool: any article taller than its frame
-  board.dataset.overflow = FRAMES.filter((f) => f.art && f.art.scrollHeight > f.h + 1).map((f) => f.id).join(' ');
+  board.dataset.overflow = ''; // (kept for the tools: nothing on the map can overflow its region now)
   snapAll();
+  adopt(world); // the little guy perched on "now"
   AGENTS.forEach((a, i) => { const f = frameOf[['xmade', 'own', 'ideas'][i]]; a.x = f.x + f.w * 0.6; a.y = f.y + Math.min(f.h * 0.55, 420); });
-  // a couple of arrows already drawn, so the board never starts bare
-  for (const [x, y, label] of LINKS.slice(0, 3).filter(([p]) => p !== 'x-twins')) {
+  // a few arrows already drawn, so the map never starts bare
+  for (const [x, y, label] of LINKS.slice(0, 5)) {
     const A = itemOf(x), B = itemOf(y);
     if (A && B) { const e = newEdge(A, B, label, AGENTS[0].color); e.b = B; linked.add(`${x}|${y}`); }
   }
@@ -1110,7 +1176,7 @@ function stillLife() {
   for (const c of [...frameOf.inbox.cards]) { const f = homeOf(c.id); if (fits(f, c)) { detach(c); attach(c, f); } }
   for (const id of POOL.slice(0, 3)) { const f = homeOf(id); const c = makeCard(id); c.written = true; if (fits(f, c)) attach(c, f); else { c.el.remove(); cards.delete(id); } }
   snapAll();
-  for (const [x, y, label] of LINKS.slice(0, 5)) { const A = itemOf(x), B = itemOf(y); if (A && B && !linked.has(`${x}|${y}`)) { const e = newEdge(A, B, label, AGENTS[1].color); e.b = B; linked.add(`${x}|${y}`); } }
+  for (const [x, y, label] of LINKS.slice(0, 12)) { const A = itemOf(x), B = itemOf(y); if (A && B && !linked.has(`${x}|${y}`)) { const e = newEdge(A, B, label, AGENTS[1].color); e.b = B; linked.add(`${x}|${y}`); } }
   const spots = [cards.get('x-patents'), cards.get('t-pokemon'), cards.get('v-already')];
   AGENTS.forEach((a, i) => { const c = spots[i] || [...cards.values()][i]; a.x = c.x + c.w * 0.7; a.y = c.y + c.h * 0.6; });
 }

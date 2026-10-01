@@ -16,16 +16,17 @@ const CAST = [
 ];
 const LINGER = ['idle', 'happy', 'curious', 'playful', 'thinking', 'searching', 'laughing', 'proud', 'wink', 'idle', 'happy'];
 const TRAVEL = ['idle', 'happy', 'playful', 'bouncing', 'comet'];
-const FPS = 22;
 const SIZE = 96;
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
 /**
  * spots: the cluster boards, { id, c: centre, right, up, n, hw, hh } (THREE.Vector3s).
  * guide: false leaves out the grunt that follows the camera (the scroll-driven fly-through).
+ * cast: how many of the others to bring (0 = all). fps: how often each is redrawn.
  * returns { update(dt, t, view), setGuideMood(state) }.
  */
-export function createGrunts({ THREE, CSS3DObject, scene, camera, spots, reduce, touch, guide = true }) {
+export function createGrunts({ THREE, CSS3DObject, scene, camera, spots, reduce, touch, guide = true, cast = 0, fps = 22 }) {
+  const FPS = fps;
   const V = THREE.Vector3;
   const rand = rng('map:grunts');
   const pick = (a) => a[Math.floor(rand() * a.length)];
@@ -47,7 +48,9 @@ export function createGrunts({ THREE, CSS3DObject, scene, camera, spots, reduce,
   }
 
   // the front page's fly-through has no one to guide: it leaves the guide at home
-  for (const def of guide ? CAST : CAST.filter((d) => d.role !== 'guide')) {
+  let roster = guide ? CAST : CAST.filter((d) => d.role !== 'guide');
+  if (cast > 0) roster = roster.slice(0, cast);
+  for (const def of roster) {
     const look = rollLook(def.seed);
     const name = rollName(def.seed).toLowerCase();
     const id = `g${grunts.length}`;

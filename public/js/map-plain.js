@@ -20,7 +20,7 @@ export function host(url) {
 
 // every word a card shows, for search
 export function nodeText(n) {
-  const parts = [n.text, n.title, n.note, n.label, n.url && host(n.url)];
+  const parts = [n.text, n.title, n.note, n.label, n.tags && n.tags.join(' '), n.url && host(n.url)];
   return strip(parts.filter(Boolean).join(' '));
 }
 
@@ -39,6 +39,7 @@ function item(n) {
       return `<li class="p-link" ${id}>${t}${note}${where}</li>`;
     }
     case 'logo': return `<li class="p-logo" ${id}>${n.url ? a(n.url, esc(n.label)) : esc(n.label)}</li>`;
+    case 'tags': return `<li class="p-tags" ${id}>${n.tags.map((t) => `<span class="p-chip">${esc(t)}</span>`).join(' ')}</li>`;
     default: return '';
   }
 }
