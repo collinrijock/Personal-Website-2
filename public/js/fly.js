@@ -25,13 +25,13 @@ const STILL = 0.5; // reduced motion's one pose, as a share of the way in to the
 const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
 const sstep = (a, b, x) => { const t = clamp((x - a) / (b - a)); return t * t * (3 - 2 * t); };
 
+// js/main.js already made a webgl2 context for the hero and marks the page no-gl when it
+// can't; a second probe context here cost seconds on software renderers, so ask the page
 function hasGL() {
-  try {
-    const c = document.createElement('canvas');
-    const g = c.getContext('webgl2');
-    g?.getExtension('WEBGL_lose_context')?.loseContext();
-    return !!g;
-  } catch { return false; }
+  const root = document.documentElement;
+  if (root.classList.contains('no-gl')) return false;
+  if (root.classList.contains('gl-on') || document.querySelector('.sky')) return true;
+  try { const g = document.createElement('canvas').getContext('webgl2'); g?.getExtension('WEBGL_lose_context')?.loseContext(); return !!g; } catch { return false; }
 }
 
 if (sec) boot();
@@ -221,12 +221,12 @@ function boot() {
     if (a !== shown.land) {
       shown.land = a;
       if (a >= 1) {
-        land.style.transform = 'none'; land.style.filter = 'none'; land.style.opacity = '1'; land.style.visibility = 'visible';
+        land.style.transform = 'none'; land.style.opacity = '1'; land.style.visibility = 'visible';
       } else {
         const e = 1 - Math.pow(1 - a, 2);
         const s = 0.42 + 0.58 * e;
+        // scale and fade only: a blur filter over the whole landing re-rasterised it every frame
         land.style.transform = `translate3d(0, ${((1 - e) * 60).toFixed(1)}px, 0) scale(${s.toFixed(4)})`;
-        land.style.filter = a > 0.02 ? `blur(${((1 - e) * 14).toFixed(2)}px)` : '';
         land.style.opacity = String(clamp(a * 1.6));
         land.style.visibility = a <= 0 ? 'hidden' : 'visible';
       }

@@ -76,9 +76,9 @@
   <span class="grunt g-hero" data-grunt="collin:site:5" data-size="112" data-move="drift" data-moods="playful,curious,happy,orbit"></span>
 </header>
 
-<!-- the canvas: the whole middle of the page. the site's own copy on a board, the articles included,
-     being sorted, written and wired up by (simulated) agents. js/board.js lifts each [data-art]
-     article into a frame; without javascript they read as a plain column. -->
+<!-- the canvas: the whole middle of the page. the site's own copy as one big map of
+     regions and cards, being sorted, written and wired up by (simulated) agents
+     (js/board.js). without javascript the same copy reads as a plain column below. -->
 <section class="canvas-sec" id="canvas" aria-labelledby="h-canvas">
   <div class="canvas-head">
     <div data-rise>
@@ -86,24 +86,24 @@
       <p class="canvas-title">i work with a lot of agents on one shared canvas.</p>
     </div>
     <div class="canvas-aside" data-rise>
-      <p>this whole site is one board. agents sort the inbox, write notes and wire ideas together while you read. the cursors are simulated. grab a card to help.</p>
+      <p>this whole site is one map. pan and zoom around it. agents sort the inbox, write notes and wire ideas together while you look. the cursors are simulated. grab a card to help.</p>
       <a class="more" href="#fly"><svg class="ico" aria-hidden="true"><use href="#i-map"/></svg>fly through it in 3d <span aria-hidden="true">↓</span></a>
     </div>
   </div>
   <div class="board-wrap" data-rise="soft">
-    <div class="board" data-board role="region" aria-label="a canvas of this site, with simulated agent cursors">
+    <div class="board" data-board role="region" aria-label="a map of this site, with simulated agent cursors">
+      <!-- the copy without javascript (js/board.js removes this and builds the map from js/content.js) -->
       <div class="arts">
-        <article class="art art-vision" data-art="vision" data-color="yellow" aria-labelledby="h-vision">
+        <article class="art" data-color="yellow" aria-labelledby="h-vision">
           <h2 class="ft" id="h-vision"><span>how i build</span></h2>
           <div class="art-body">
             <p class="line">i love building software.</p>
-            <p class="line">i build a lot of it, with a lot of agents.<span class="grunt g-atoms" data-grunt="collin:site:4" data-size="64" data-state="working" data-tool="hammer" data-move="bob" data-moods="working,proud"></span></p>
+            <p class="line">i build a lot of it, with a lot of agents.</p>
             <p class="line soft">and i'm getting into building hardware.</p>
             <p class="line grad">climb the mountain.</p>
           </div>
         </article>
-        <article class="art art-duo" data-art="exowatt" data-color="blue" aria-labelledby="h-exowatt">
-          <span class="grunt g-perch" data-grunt="collin:site:2" data-size="62" data-move="bob" data-moods="curious,happy,wink"></span>
+        <article class="art" data-color="blue" aria-labelledby="h-exowatt">
           <p class="ft"><span>now</span></p>
           <div class="art-body">
             <h2 class="art-h" id="h-exowatt">exowatt</h2>
@@ -111,7 +111,7 @@
             <a class="more" href="https://exowatt.com"><svg class="ico" aria-hidden="true"><use href="#i-sun"/></svg>exowatt.com <span aria-hidden="true">→</span></a>
           </div>
         </article>
-        <article class="art art-duo" data-art="charles" data-color="purple" aria-labelledby="h-charles">
+        <article class="art" data-color="purple" aria-labelledby="h-charles">
           <p class="ft"><span>on the side</span></p>
           <div class="art-body">
             <h2 class="art-h" id="h-charles">super charles</h2>
@@ -119,15 +119,9 @@
             <a class="more" href="https://app.collinrijock.com"><svg class="ico" aria-hidden="true"><use href="#i-site"/></svg>app.collinrijock.com <span aria-hidden="true">→</span></a>
           </div>
         </article>
-        <article class="art art-before" data-art="before" data-color="gray" aria-labelledby="h-before">
+        <article class="art" data-color="gray" aria-labelledby="h-before">
           <h2 class="ft" id="h-before"><span>before</span></h2>
           <div class="art-body">
-            <figure class="photo">
-              <img src="img/nyse.jpg" alt="the metaprop accelerator cohort on the trading floor of the new york stock exchange. collin is front row, fourth from the left." width="1600" height="1000" loading="lazy" decoding="async" draggable="false">
-              <figcaption><span>on the floor of the new york stock exchange, with the metaprop cohort.</span><small>nyc · mar 2025</small></figcaption>
-              <p class="photo-note">photo: metaprop</p>
-            </figure>
-            <div class="stints-col">
             <p class="art-h lead">early engineer at three startups, and a research lab at fiu.</p>
             <div class="stints">
               <section class="stint">
@@ -155,11 +149,14 @@
                 <p><b>lstm anomaly detection on navy sensor data.</b> catching bad actors, and generating adversarial data to stress the baselines.</p>
               </section>
             </div>
-            </div>
+            <figure class="photo">
+              <img src="img/nyse.jpg" alt="the metaprop accelerator cohort on the trading floor of the new york stock exchange. collin is front row, fourth from the left." width="1600" height="1000" decoding="async" draggable="false">
+              <figcaption><span>on the floor of the new york stock exchange, with the metaprop cohort.</span><small>nyc · mar 2025 · photo: metaprop</small></figcaption>
+            </figure>
           </div>
         </article>
       </div>
-      <noscript><p class="board-nojs">the rest of the canvas (the things i've made, ideas, writing) needs javascript. <a href="map.html">here it is as a list</a>.</p></noscript>
+      <noscript><p class="board-nojs">the rest of the map (the things i've made, ideas, writing) needs javascript. <a href="map.html">here it is as a list</a>.</p></noscript>
     </div>
   </div>
 </section>

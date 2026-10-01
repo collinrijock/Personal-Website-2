@@ -1,9 +1,8 @@
-/* "before": the career article on the canvas. a short snippet per earlier job,
-   and the nyse photo as a real image card stuck on the board. */
+/* "before": the career copy without javascript (index.html .arts), a short section
+   per earlier job and the nyse photo. with javascript the same facts are cards on
+   the map (board.css, the chips are .chip there). */
 
-.board .art-before .art-body { display: grid; grid-template-columns: minmax(0, 440px) minmax(0, 1fr); gap: 44px; align-items: start; padding: 36px 42px 40px; }
-.board .art-before .lead { margin-bottom: 26px; }
-.board .stints { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 30px 38px; }
+html:not(.js) .board .stints { margin-top: 24px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 30px 38px; }
 .stint-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; }
 .stint-head h3 { font-size: 22px; line-height: 1.2; font-weight: 600; letter-spacing: -0.02em; }
 .stint-head .when { font: 400 12.5px/1 var(--mono); color: var(--ink-3); }
@@ -13,25 +12,13 @@
 .stint p b { color: var(--ink); font-weight: 550; }
 .stint .what { color: var(--ink-3); font-size: 14px; line-height: 1.45; margin-top: 4px; }
 
-/* the photo: a white card, tilted a little, like it was pinned to the board */
-.board .photo { margin: 6px 0 0; border-radius: 16px; overflow: hidden; background: #fff; box-shadow: 0 0 0 1px rgba(11, 16, 32, .08), 0 2px 4px rgba(20, 24, 40, .06), 0 30px 60px -30px rgba(24, 10, 70, .38); transform: rotate(-1.4deg); transition: transform .5s cubic-bezier(.2, .7, .2, 1); }
-.board .photo:hover { transform: rotate(0deg) scale(1.01); }
-.board .photo img { display: block; width: 100%; height: auto; aspect-ratio: 16 / 10; object-fit: cover; }
-.board .photo figcaption { padding: 14px 18px 4px; display: flex; justify-content: space-between; gap: 14px; align-items: baseline; font-size: 15px; line-height: 1.45; color: var(--ink-2); }
-.board .photo figcaption small { font: 400 12px/1.3 var(--mono); color: var(--ink-3); white-space: nowrap; }
-.board .photo-note { padding: 0 18px 14px; font: 400 12px/1.5 var(--mono); color: var(--ink-3); }
-
-.board.narrow .art-before .art-body { display: block; padding: 24px 22px 28px; }
-.board.narrow .photo { transform: rotate(-1deg); margin: 0 0 28px; }
-.board.narrow .photo figcaption { display: block; font-size: 14.5px; }
-.board.narrow .photo figcaption small { display: block; margin-top: 4px; }
-.board.narrow .stints { grid-template-columns: 1fr; gap: 26px; }
-.board.narrow .stint + .stint { padding-top: 24px; border-top: 1px solid var(--line); }
+html:not(.js) .board .photo { margin: 32px 0 0; max-width: 720px; border-radius: 16px; overflow: hidden; background: #fff; box-shadow: 0 0 0 1px rgba(11, 16, 32, .08), 0 2px 4px rgba(20, 24, 40, .06), 0 30px 60px -30px rgba(24, 10, 70, .38); }
+html:not(.js) .board .photo img { display: block; width: 100%; height: auto; aspect-ratio: 16 / 10; object-fit: cover; }
+html:not(.js) .board .photo figcaption { padding: 14px 18px; display: flex; justify-content: space-between; gap: 14px; align-items: baseline; font-size: 15px; line-height: 1.45; color: var(--ink-2); }
+html:not(.js) .board .photo figcaption small { font: 400 12px/1.3 var(--mono); color: var(--ink-3); white-space: nowrap; }
 
 @media (max-width: 760px) {
-  html:not(.js) .board .art-before .art-body { display: block; }
   html:not(.js) .board .stints { grid-template-columns: 1fr; }
-  html:not(.js) .board .photo { margin-bottom: 26px; transform: rotate(-1deg); }
   html:not(.js) .board .photo figcaption { display: block; }
   html:not(.js) .board .photo figcaption small { display: block; margin-top: 4px; }
 }

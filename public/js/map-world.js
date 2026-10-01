@@ -1,6 +1,11 @@
 // map-world.js — the brainstorm, in 3d.
 // webgl draws the air: palette blobs, a field of specks, the arrows (with pulses) and the frames.
-// css3d draws everything you read: cards, frame titles, arrow labels, grunts. one camera drives both.
+// in free mode css3d draws everything you read: cards, frame titles, arrow labels, grunts, so the
+// links on the cards are real links. in scroll mode (the front page's fly-through) the cards,
+// titles and labels are painted once into a texture atlas (js/map-paint.js) and drawn as textured
+// billboards in webgl, and only the three grunts are css3d: the page scrolls over the picture, so
+// nothing needs to be clickable, and a hundred-odd 3d dom layers was what made the flight heavy.
+// one camera drives both renderers.
 //
 // two modes:
 //   free    map.html. the page is the world: window-sized, wheel / drag / pinch / keys fly it,
@@ -16,6 +21,7 @@ import { CLUSTERS, NODES, EDGES } from './content.js';
 import { buildCard } from './map-cards.js';
 import { relax, thread, rng } from './map-layout.js';
 import { createGrunts } from './map-grunts.js';
+import { paintAtlas } from './map-paint.js';
 
 const V3 = THREE.Vector3;
 const DEG = Math.PI / 180;
@@ -28,6 +34,31 @@ export const TOUR = ['me', 'vision', 'exowatt', 'xmade', 'charles', 'work', 'thi
 
 const PAD = 34, BAR = 54; // frame padding and title bar, in card pixels
 const START = { pos: new V3(2400, 2300, 15500), look: new V3(0, 0, 0) }; // far out, where the intro begins
+const START_SCROLL = { pos: new V3(2300, 2000, 9800), look: new V3(0, 0, 0) }; // the fly-through starts nearer: the ring is already in view
+const nextFrame = () => new Promise((r) => requestAnimationFrame(() => r()));
+
+// textured billboards (scroll mode): a quad per card, facing the camera, alpha per quad
+const SPRITE_VS = /* glsl */ `
+attribute vec2 corner;
+attribute vec2 auv;
+attribute float alpha;
+varying vec2 vUv;
+varying float vA;
+void main() {
+  vUv = auv; vA = alpha;
+  vec4 mv = modelViewMatrix * vec4(position, 1.0);
+  mv.xy += corner;
+  gl_Position = projectionMatrix * mv;
+}`;
+const SPRITE_FS = /* glsl */ `
+uniform sampler2D map;
+varying vec2 vUv;
+varying float vA;
+void main() {
+  vec4 c = texture2D(map, vUv);
+  if (c.a < 0.5 || vA < 0.01) discard;
+  gl_FragColor = vec4(c.rgb, c.a * vA);
+}`;
 const FAR = [1900, 7600]; // distance fade: starts, ends
 const PASTEL = { yellow: '#fff1a8', pink: '#ffd6e4', blue: '#d3e7ff', green: '#d4f5d9', purple: '#e6dcff', gray: '#e9e9ec', white: '#ffffff' };
 // the arrows walk the palette from blue through violet, pink and orange to a deep yellow
@@ -191,12 +222,16 @@ void main() {
 
 export async function createWorld({ stage, reduce = false, touch = false, onTour = () => {}, mode = 'free', route = ROUTE, dark = false }) {
   const scroll = mode === 'scroll';
+  const sprites = scroll; // cards as textured quads from an atlas, not css3d
   const viewSize = () => (scroll ? [stage.clientWidth || innerWidth, stage.clientHeight || innerHeight] : [innerWidth, innerHeight]);
   let [vw, vh] = viewSize();
-  const dpr = Math.min(window.devicePixelRatio || 1, 2);
   const tanV = Math.tan((FOV / 2) * DEG);
 
   const gl = new THREE.WebGLRenderer({ antialias: false, alpha: true, powerPreference: 'high-performance' });
+  // a software renderer (swiftshader, llvmpipe, headless browsers) pays for every pixel on the
+  // cpu: give it a smaller budget, so the flight still moves instead of stalling
+  const soft = (() => { try { const dbg = gl.getContext().getExtension('WEBGL_debug_renderer_info'); const r = dbg ? gl.getContext().getParameter(dbg.UNMASKED_RENDERER_WEBGL) : ''; return /swiftshader|llvmpipe|softpipe|software|mesa offscreen/i.test(String(r)); } catch { return false; } })();
+  const dpr = soft ? Math.min(window.devicePixelRatio || 1, 1) : Math.min(window.devicePixelRatio || 1, 2);
   gl.setPixelRatio(dpr);
   gl.setSize(vw, vh, false);
   gl.setClearColor(0x000000, 0);
@@ -211,29 +246,44 @@ export async function createWorld({ stage, reduce = false, touch = false, onTour
   const cssScene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(FOV, vw / vh, 5, 60000);
 
-  /* ── cards: build, then measure once ── */
-  const meas = document.createElement('div');
-  meas.style.cssText = 'position:absolute;left:0;top:0;visibility:hidden;pointer-events:none;contain:layout style;';
-  stage.append(meas);
-  const cards = NODES.map((n) => ({ n, el: buildCard(n), v: new V3(), shown: true, op: -1 }));
+  /* ── cards: dom elements measured once (free mode), or painted into an atlas (scroll mode) ── */
+  const cards = NODES.map((n, i) => ({ n, i, v: new V3(), shown: true, op: -1, a: -1 }));
   const byId = new Map(cards.map((k) => [k.n.id, k]));
   const clusters = CLUSTERS.map((c, i) => ({ ...c, i, cards: cards.filter((k) => k.n.cluster === c.id) }));
   const clusterOf = new Map(clusters.map((c) => [c.id, c]));
-  for (const k of cards) { k.cl = clusterOf.get(k.n.cluster); k.el.style.position = 'absolute'; if (scroll) k.el.dataset.board = k.n.cluster; meas.append(k.el); }
-  const titles = clusters.filter((c) => c.id !== 'me').map((c) => {
-    const el = document.createElement('div');
-    el.className = 'ftitle';
-    el.dataset.color = c.color;
-    el.dataset.cluster = c.id;
-    el.textContent = c.title;
-    el.style.position = 'absolute';
-    meas.append(el);
-    return { c, el };
-  });
-  void meas.offsetWidth; // lay out once so the fonts start loading
-  await Promise.race([document.fonts?.ready, new Promise((r) => setTimeout(r, 2500))]);
-  for (const k of cards) { k.w = k.el.offsetWidth; k.h = k.el.offsetHeight; }
-  for (const t of titles) t.w = t.el.offsetWidth;
+  for (const k of cards) k.cl = clusterOf.get(k.n.cluster);
+  const titles = clusters.filter((c) => c.id !== 'me').map((c) => ({ c, h: 34 }));
+  const labelled = EDGES.filter((e) => e[2] && byId.has(e[0]) && byId.has(e[1]));
+  let atlas = null, meas = null;
+  if (sprites) {
+    const items = [
+      ...cards.map((k) => ({ id: k.n.id, node: k.n })),
+      ...titles.map((t) => ({ id: `title:${t.c.id}`, node: { type: 'ftitle', text: t.c.title, color: t.c.color } })),
+      ...labelled.map(([a, b, text]) => ({ id: `pill:${a}|${b}`, node: { type: 'pill', text } })),
+    ];
+    atlas = await paintAtlas(items, { dark, scale: Math.min(1.75, Math.max(1.25, dpr)) });
+    for (const k of cards) { const c = atlas.cells.get(k.n.id); k.w = c.w; k.h = c.h; k.cell = c; }
+    for (const t of titles) { const c = atlas.cells.get(`title:${t.c.id}`); t.w = c.w; t.cell = c; }
+  } else {
+    meas = document.createElement('div');
+    meas.style.cssText = 'position:absolute;left:0;top:0;visibility:hidden;pointer-events:none;contain:layout style;';
+    stage.append(meas);
+    for (const k of cards) { k.el = buildCard(k.n); k.el.style.position = 'absolute'; meas.append(k.el); }
+    for (const t of titles) {
+      const el = document.createElement('div');
+      el.className = 'ftitle';
+      el.dataset.color = t.c.color;
+      el.dataset.cluster = t.c.id;
+      el.textContent = t.c.title;
+      el.style.position = 'absolute';
+      meas.append(el);
+      t.el = el;
+    }
+    void meas.offsetWidth; // lay out once so the fonts start loading
+    await Promise.race([document.fonts?.ready, new Promise((r) => setTimeout(r, 2500))]);
+    for (const k of cards) { k.w = k.el.offsetWidth; k.h = k.el.offsetHeight; }
+    for (const t of titles) t.w = t.el.offsetWidth;
+  }
 
   /* ── layout: boards on a loose ring around the name ── */
   const aspect0 = vw / vh;
@@ -285,12 +335,71 @@ export async function createWorld({ stage, reduce = false, touch = false, onTour
   }
   const hueOf = new Map(clusters.map((cl) => [cl.id, cl === me ? rgb('#6a2bff') : ramp(ring.indexOf(cl) / Math.max(1, ring.length - 1))]));
 
-  for (const k of cards) {
-    const obj = new CSS3DObject(k.el);
-    obj.position.copy(k.pos);
-    obj.scale.setScalar(k.s);
-    k.obj = obj;
-    cssScene.add(obj);
+  if (!sprites) {
+    for (const k of cards) {
+      const obj = new CSS3DObject(k.el);
+      obj.position.copy(k.pos);
+      obj.scale.setScalar(k.s);
+      k.obj = obj;
+      cssScene.add(obj);
+    }
+  }
+
+  /* ── sprites (scroll mode): the atlas pages as textures, one quad per card / pill, per page ── */
+  const spritePages = [];
+  let spriteTex = [];
+  function spriteMaterial(tex) {
+    return new THREE.ShaderMaterial({ uniforms: { map: { value: tex } }, vertexShader: SPRITE_VS, fragmentShader: SPRITE_FS, transparent: true, depthTest: true, depthWrite: true, side: THREE.DoubleSide });
+  }
+  // items: { pos (V3), w, h, s, cell }. writes it.pg / it.ai so alphas can be set per frame
+  function spriteMeshes(items, order) {
+    if (!atlas) return;
+    spriteTex = atlas.pages.map((c) => {
+      const t = new THREE.CanvasTexture(c);
+      t.flipY = false;
+      t.colorSpace = THREE.SRGBColorSpace;
+      t.minFilter = THREE.LinearMipmapLinearFilter;
+      t.magFilter = THREE.LinearFilter;
+      t.anisotropy = soft ? 1 : Math.min(4, gl.capabilities.getMaxAnisotropy());
+      t.generateMipmaps = true;
+      return t;
+    });
+    atlas.pages.forEach((c, pi) => {
+      const list = items.filter((it) => it.cell.page === pi);
+      if (!list.length) return;
+      const n = list.length;
+      const pos = new Float32Array(n * 12), corner = new Float32Array(n * 8), uv = new Float32Array(n * 8), alpha = new Float32Array(n * 4);
+      const idx = new Uint16Array(n * 6);
+      list.forEach((it, i) => {
+        const hw = (it.w * it.s) / 2, hh = (it.h * it.s) / 2, { u0, v0, u1, v1 } = it.cell;
+        for (let q = 0; q < 4; q++) pos.set([it.pos.x, it.pos.y, it.pos.z], i * 12 + q * 3);
+        corner.set([-hw, hh, hw, hh, -hw, -hh, hw, -hh], i * 8);
+        uv.set([u0, v0, u1, v0, u0, v1, u1, v1], i * 8);
+        idx.set([i * 4, i * 4 + 2, i * 4 + 1, i * 4 + 1, i * 4 + 2, i * 4 + 3], i * 6);
+        it.pg = spritePages.length; it.ai = i; it.a = -1;
+      });
+      const g = new THREE.BufferGeometry();
+      g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+      g.setAttribute('corner', new THREE.BufferAttribute(corner, 2));
+      g.setAttribute('auv', new THREE.BufferAttribute(uv, 2));
+      const al = new THREE.BufferAttribute(alpha, 1);
+      al.setUsage(THREE.DynamicDrawUsage);
+      g.setAttribute('alpha', al);
+      g.setIndex(new THREE.BufferAttribute(idx, 1));
+      const m = new THREE.Mesh(g, spriteMaterial(spriteTex[pi]));
+      m.frustumCulled = false;
+      m.renderOrder = order;
+      scene.add(m);
+      spritePages.push({ mesh: m, alpha: al, dirty: false });
+    });
+  }
+  function setAlpha(it, o) {
+    const q = Math.round(o * 64) / 64;
+    if (q === it.a || it.pg == null) return;
+    it.a = q;
+    const pg = spritePages[it.pg];
+    pg.alpha.array.fill(q, it.ai * 4, it.ai * 4 + 4);
+    pg.dirty = true;
   }
 
   /* ── arrows: the edges, plus a faint thread through each board ── */
@@ -337,7 +446,7 @@ export async function createWorld({ stage, reduce = false, touch = false, onTour
     // long arcs across the whole map stay quieter than local links
     Object.assign(c, { alpha: 0.46 * clamp(2400 / c.len, 0.5, 1), core: 0.66, gap: 1.2 + er() * 3.8 });
     (same ? chainCurves.get(A.n.cluster) : crossCurves).push(c);
-    if (label) labels.push({ text: label, pos: c.mid });
+    if (label) labels.push({ text: label, pos: c.mid, key: `${a}|${b}` });
   }
   for (const cl of clusters) {
     for (const [i, j] of thread(cl.items)) {
@@ -430,6 +539,10 @@ export async function createWorld({ stage, reduce = false, touch = false, onTour
 
   // arrow labels: the canvas's little white pills
   const pills = labels.map((l) => {
+    if (sprites) {
+      const cell = atlas.cells.get(`pill:${l.key}`);
+      return { pos: l.pos, v: new V3(), shown: true, op: -1, a: -1, w: cell.w, h: cell.h, s: 1, cell };
+    }
     const el = document.createElement('div');
     el.className = 'elabel';
     el.textContent = l.text;
@@ -439,6 +552,7 @@ export async function createWorld({ stage, reduce = false, touch = false, onTour
     cssScene.add(obj);
     return { el, obj, pos: l.pos, v: new V3(), shown: true, op: -1, w: 12 + l.text.length * 6.4, h: 22 };
   });
+  if (sprites) spriteMeshes([...cards, ...pills], 40);
 
   /* ── frames ── */
   const plane = new THREE.PlaneGeometry(1, 1);
@@ -459,7 +573,8 @@ export async function createWorld({ stage, reduce = false, touch = false, onTour
       line: white ? [0.83, 0.85, 0.9] : mix(past, [0.04, 0.06, 0.13], 0.13),
     };
   }
-  const frames = titles.map(({ c: base, el, w }) => {
+  const frames = titles.map((t) => {
+    const { c: base, el, w } = t;
     const cl = clusterOf.get(base.id);
     const pp = paper(cl, dark);
     const mat = new THREE.ShaderMaterial({
@@ -482,15 +597,45 @@ export async function createWorld({ stage, reduce = false, touch = false, onTour
     mesh.frustumCulled = false;
     mesh.renderOrder = 10;
     scene.add(mesh);
-    const obj = new CSS3DObject(el);
-    cssScene.add(obj);
-    return { cl, mesh, u: mat.uniforms, title: { el, obj, w, op: -1, shown: true }, alpha: 0, z: 0, x0: 0, x1: 0, y0: 0, y1: 0 };
+    let title;
+    if (sprites) title = { w, h: t.h, cell: t.cell, op: -1, shown: true, a: -1 };
+    else { const obj = new CSS3DObject(el); cssScene.add(obj); title = { el, obj, w, op: -1, shown: true }; }
+    return { cl, mesh, u: mat.uniforms, title, alpha: 0, z: 0, x0: 0, x1: 0, y0: 0, y1: 0 };
   });
+  // the frame titles as sprites live in camera space (they sit on a camera-facing rect), so their
+  // mesh wears the camera's matrix and their vertices are written each frame
+  let titleMesh = null, titlePos = null, titleAlpha = null;
+  if (sprites && frames.length) {
+    const n = frames.length;
+    const pos = new Float32Array(n * 12), corner = new Float32Array(n * 8), uv = new Float32Array(n * 8), alpha = new Float32Array(n * 4);
+    const idx = new Uint16Array(n * 6);
+    frames.forEach((f, i) => {
+      const { u0, v0, u1, v1 } = f.title.cell;
+      uv.set([u0, v0, u1, v0, u0, v1, u1, v1], i * 8);
+      idx.set([i * 4, i * 4 + 2, i * 4 + 1, i * 4 + 1, i * 4 + 2, i * 4 + 3], i * 6);
+    });
+    const g = new THREE.BufferGeometry();
+    titlePos = new THREE.BufferAttribute(pos, 3); titlePos.setUsage(THREE.DynamicDrawUsage);
+    titleAlpha = new THREE.BufferAttribute(alpha, 1); titleAlpha.setUsage(THREE.DynamicDrawUsage);
+    g.setAttribute('position', titlePos);
+    g.setAttribute('corner', new THREE.BufferAttribute(corner, 2));
+    g.setAttribute('auv', new THREE.BufferAttribute(uv, 2));
+    g.setAttribute('alpha', titleAlpha);
+    g.setIndex(new THREE.BufferAttribute(idx, 1));
+    // the titles' atlas page: whichever page holds the first one (they're packed together, same height)
+    const mat = spriteMaterial(spriteTex[frames[0].title.cell.page]);
+    mat.depthTest = false; mat.depthWrite = false;
+    titleMesh = new THREE.Mesh(g, mat);
+    titleMesh.frustumCulled = false;
+    titleMesh.matrixAutoUpdate = false;
+    titleMesh.renderOrder = 41;
+    scene.add(titleMesh);
+  }
 
   /* ── the air: specks and palette blobs ── */
   let dotMat;
   {
-    const N = touch ? 1100 : 1700;
+    const N = soft ? 500 : touch ? 1100 : 1700;
     const pr = rng('map:specks');
     const pos = new Float32Array(N * 3), col = new Float32Array(N * 3), size = new Float32Array(N), seed = new Float32Array(N);
     for (let i = 0; i < N; i++) {
@@ -540,7 +685,7 @@ export async function createWorld({ stage, reduce = false, touch = false, onTour
     ['#ffd23f', [0, 300, -5400], 6600, 0.24], ['#18a0ff', [4300, 1900, 2500], 5000, 0.12],
     ['#ff2d87', [-4500, 600, 900], 5400, 0.12], ['#ffd23f', [-700, -2700, -700], 5800, 0.14],
     ['#6a2bff', [1900, 2700, -3100], 5200, 0.11], ['#ff7a1a', [-300, -300, 5600], 5000, 0.1],
-  ].map(([c, p, s, o]) => {
+  ].slice(0, soft ? 4 : 10).map(([c, p, s, o]) => {
     const m = new THREE.SpriteMaterial({ map: blobTex, color: new THREE.Color(c), transparent: true, opacity: o, depthWrite: false, depthTest: false, fog: false });
     const sp = new THREE.Sprite(m);
     sp.position.set(...p);
@@ -550,7 +695,7 @@ export async function createWorld({ stage, reduce = false, touch = false, onTour
     return { sp, o, s };
   });
 
-  meas.remove();
+  meas?.remove();
 
   /* ── the camera, and how you fly it ── */
   const ctl = { pos: new V3(), yaw: 0, pitch: 0, tyaw: 0, tpitch: 0, vel: new V3(), pend: 0, keys: new Set(), flight: null };
@@ -638,7 +783,8 @@ export async function createWorld({ stage, reduce = false, touch = false, onTour
     // small boards shouldn't blow up to slide size; big ones shouldn't shrink past reading
     const maxScale = narrow ? 1 : 1.12;
     D = Math.max(D, vh / 2 / (maxScale * tanV));
-    const minScale = narrow ? 0.72 : 0.52;
+    // a phone frames the whole board (its width), however small the cards get: a cropped group reads as broken
+    const minScale = narrow ? 0.3 : 0.52;
     const Dmax = vh / 2 / (minScale * tanV);
     if (cl.id !== 'me' && !reduce && D > Dmax) {
       D = Dmax;
@@ -680,7 +826,7 @@ export async function createWorld({ stage, reduce = false, touch = false, onTour
     const key = (pos, look) => keys.push({ pos: pos.clone(), look: look.clone() }) - 1;
     const ringR = ring.reduce((a, cl) => a + hLen(cl.c), 0) / Math.max(1, ring.length);
     const at = (ang, r, y) => new V3(Math.sin(ang) * r, y, Math.cos(ang) * r);
-    let last = key(START.pos, START.look);
+    let last = key(START_SCROLL.pos, START_SCROLL.look);
     let lead = 1.5; // the first leg, in from far out, is the longest
     for (const id of route) {
       const cl = clusterOf.get(id);
@@ -823,6 +969,7 @@ export async function createWorld({ stage, reduce = false, touch = false, onTour
     if (i >= 0) tourGo(i, { start: false });
   }
   function highlight(ids, cur) {
+    if (sprites) return;
     stage.classList.toggle('is-searching', !!ids);
     for (const k of cards) {
       const hit = !!ids && ids.has(k.n.id);
@@ -935,7 +1082,8 @@ export async function createWorld({ stage, reduce = false, touch = false, onTour
   const spots = clusters.map((cl) => ({ id: cl.id, c: cl.fc, right: cl.right, up: cl.up, n: cl.n, hw: cl.fw / 2, hh: cl.fh / 2 }));
   let grunts = null;
   try {
-    grunts = createGrunts({ THREE, CSS3DObject, scene: cssScene, camera, spots, reduce, touch, guide: !scroll });
+    // the fly-through keeps three (css3d is the one dom cost left in it), redrawn less often
+    grunts = createGrunts({ THREE, CSS3DObject, scene: cssScene, camera, spots, reduce, touch, guide: !scroll, cast: scroll ? 3 : 0, fps: scroll ? 12 : 22 });
   } catch (err) {
     grunts = null; // the map is still the map without them
   }
@@ -982,11 +1130,11 @@ export async function createWorld({ stage, reduce = false, touch = false, onTour
         if (px > g.x0 && px < g.x1 && py > g.y0 && py < g.y1) f.seen *= 1 - 0.75 * g.alpha;
       }
     }
-    for (const f of frames) {
+    frames.forEach((f, i) => {
       const show = f.seen > 0.02;
       if (f.mesh.visible !== show) f.mesh.visible = show;
-      if (f.title.shown !== show) { f.title.obj.visible = show; f.title.shown = show; }
-      if (!show) continue;
+      if (f.title.shown !== show) { if (f.title.obj) f.title.obj.visible = show; f.title.shown = show; }
+      if (!show) { if (titleAlpha && titleAlpha.array[i * 4] !== 0) { titleAlpha.array.fill(0, i * 4, i * 4 + 4); titleAlpha.needsUpdate = true; } return; }
       const { z, kk, bar, x0, x1, y0, y1 } = f;
       const w = x1 - x0, h = y1 - y0;
       f.mesh.position.copy(camera.localToWorld(tmpV.set((x0 + x1) / 2, (y0 + y1) / 2, -z)));
@@ -998,12 +1146,22 @@ export async function createWorld({ stage, reduce = false, touch = false, onTour
       f.u.uBw.value = 2 * kk;
       f.u.uAlpha.value = f.seen;
       const t = f.title;
-      t.obj.position.copy(camera.localToWorld(tmpV.set(x0 + 16 * kk + (t.w * kk) / 2, y1 - bar / 2, -z)));
-      t.obj.quaternion.copy(camera.quaternion);
-      t.obj.scale.setScalar(kk);
-      const q = Math.round(f.seen * 40) / 40;
-      if (q !== t.op) { t.el.style.opacity = String(q); t.op = q; }
-    }
+      const tx = x0 + 16 * kk + (t.w * kk) / 2, ty = y1 - bar / 2;
+      if (titlePos) {
+        const hw = (t.w * kk) / 2, hh = (t.h * kk) / 2, zz = -z + 1;
+        titlePos.array.set([tx - hw, ty + hh, zz, tx + hw, ty + hh, zz, tx - hw, ty - hh, zz, tx + hw, ty - hh, zz], i * 12);
+        titlePos.needsUpdate = true;
+        const q = Math.round(f.seen * 64) / 64;
+        if (titleAlpha.array[i * 4] !== q) { titleAlpha.array.fill(q, i * 4, i * 4 + 4); titleAlpha.needsUpdate = true; }
+      } else {
+        t.obj.position.copy(camera.localToWorld(tmpV.set(tx, ty, -z)));
+        t.obj.quaternion.copy(camera.quaternion);
+        t.obj.scale.setScalar(kk);
+        const q = Math.round(f.seen * 40) / 40;
+        if (q !== t.op) { t.el.style.opacity = String(q); t.op = q; }
+      }
+    });
+    if (titleMesh) titleMesh.matrix.copy(camera.matrixWorld);
     // far boards first, each followed by its own thread, so a near frame lies over the far web
     for (const f of frames) { const m = chainMesh.get(f.cl.id); if (m && !(f.seen > 0.02)) m.renderOrder = 6; }
     const order = frames.filter((f) => f.seen > 0.02).sort((a, b) => b.z - a.z);
@@ -1041,13 +1199,20 @@ export async function createWorld({ stage, reduce = false, touch = false, onTour
     if (q !== item.op) { item.el.style.opacity = String(q); item.op = q; }
   }
   function updateCards(dt) {
+    const m = camera.matrixWorldInverse;
+    if (sprites) {
+      for (const k of cards) setAlpha(k, fadeOf(k.v, k.w * k.s, k.h * k.s, k.cl));
+      for (const p of pills) { p.v.copy(p.pos).applyMatrix4(m); setAlpha(p, fadeOf(p.v, p.w, p.h, null) * 0.95); }
+      for (const pg of spritePages) if (pg.dirty) { pg.alpha.needsUpdate = true; pg.dirty = false; }
+      return;
+    }
     const ease = reduce ? 1 : 1 - Math.exp(-dt * 7);
     for (const k of cards) place(k, fadeOf(k.v, k.w * k.s, k.h * k.s, k.cl), ease);
-    const m = camera.matrixWorldInverse;
     for (const p of pills) { p.v.copy(p.pos).applyMatrix4(m); place(p, fadeOf(p.v, p.w, p.h, null) * 0.95, ease); }
   }
   let blobK = dark ? 1.7 : 1; // the palette glows a little brighter at night
-  function setDark(on) {
+  let repainting = false;
+  async function setDark(on) {
     dark = !!on;
     blobK = dark ? 1.7 : 1;
     for (const f of frames) {
@@ -1056,6 +1221,17 @@ export async function createWorld({ stage, reduce = false, touch = false, onTour
       f.u.uBarC.value.set(...pp.bar); f.u.uLine.value.set(...pp.line);
     }
     stale = true;
+    // the atlas has the name's line in ink; at night it's light. same items, same packing, new paint
+    if (atlas && !repainting) {
+      repainting = true;
+      try {
+        const items = [...cards.map((k) => ({ id: k.n.id, node: k.n })), ...titles.map((t) => ({ id: `title:${t.c.id}`, node: { type: 'ftitle', text: t.c.title, color: t.c.color } })), ...labelled.map(([a, b, text]) => ({ id: `pill:${a}|${b}`, node: { type: 'pill', text } }))];
+        const next = await paintAtlas(items, { dark, scale: atlas.scale });
+        next.pages.forEach((c, i) => { if (spriteTex[i]) { spriteTex[i].image = c; spriteTex[i].needsUpdate = true; } });
+        atlas.pages = next.pages;
+        stale = true;
+      } finally { repainting = false; }
+    }
   }
   function updateBlobs() {
     for (const b of blobs) {
@@ -1104,7 +1280,15 @@ export async function createWorld({ stage, reduce = false, touch = false, onTour
   camera.position.copy(ctl.pos);
   camera.rotation.set(ctl.pitch, ctl.yaw, 0, 'YXZ');
   camera.updateMatrixWorld();
+  await nextFrame(); // the shaders compile in their own frame, not on the tail of the build
   gl.compile(scene, camera);
+  if (scroll) {
+    // and the first frame is drawn now, while the section is still off screen: a software
+    // renderer's first draw of each program is its slowest, better here than mid-scroll
+    await nextFrame();
+    now = performance.now() / 1000;
+    tick(0);
+  }
 
   let raf = 0, last = 0;
   function loop(ms) {

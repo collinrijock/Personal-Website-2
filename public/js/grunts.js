@@ -8,6 +8,7 @@
 // data-state  resting state    data-tool   "hammer"
 // data-move   bob | drift | patrol
 // data-moods  comma list of states it drifts into
+// data-fps    redraws a second (default 30; the ones on the canvas use fewer)
 
 import { rollLook, rollName, createMascotEngine, renderFrameToSvg } from './vendor/grunt-mascot.js';
 
@@ -44,10 +45,10 @@ function make(el, i) {
 
   const eng = createMascotEngine(look, { initialState: rest });
   const g = {
-    el, body, bubble, eng, look: { ...look, tool }, size, rest, moods, tool,
+    el, body, bubble, eng, look: { ...look, tool }, size, rest, moods, tool, fps: +el.dataset.fps || FPS,
     prefix: `gr${i}`, move: el.dataset.move || 'bob', phase: i * 1.7 + Math.random() * 3,
     visible: false, hover: false, until: 0, nextMood: now() + 3 + Math.random() * 5, lastDraw: 0,
-    x: 0, vx: 1, gazeOn: false,
+    x: 0, vx: 1, gazeOn: false, rect: { cx: -1e4, cy: -1e4 }, rectAt: -1, asleep: false,
   };
 
   const setState = (st, hold) => { eng.setState(st, now()); g.until = hold ? now() + hold : 0; if (reduce) draw(g, true); };
@@ -67,7 +68,7 @@ function make(el, i) {
 
 function draw(g, force = false) {
   const t = reduce ? g.eng.restPoseTime() : now();
-  if (!force && t - g.lastDraw < 1 / FPS) return;
+  if (!force && t - g.lastDraw < 1 / g.fps) return;
   g.lastDraw = t;
   g.body.innerHTML = renderFrameToSvg(g.eng.sample(t), g.look, g.size, { idPrefix: g.prefix });
 }
@@ -93,6 +94,16 @@ function place(g, t, dt) {
   g.el.style.transform = `translate3d(${tx.toFixed(1)}px, ${ty.toFixed(1)}px, 0) rotate(${rot.toFixed(2)}deg)`;
 }
 
+// where a grunt is on screen, read a few times a second (never every frame: the
+// svg was just rewritten, and a layout read after a write is a forced layout)
+function rect(g, t) {
+  if (t - g.rectAt < 0.25 + (g.phase % 0.1)) return g.rect;
+  g.rectAt = t;
+  g.asleep = !!g.el.closest('[inert]');
+  const r = g.el.getBoundingClientRect();
+  g.rect = { cx: r.left + r.width / 2, cy: r.top + r.height / 2 };
+  return g.rect;
+}
 function gaze(g, t) {
   if (g.move === 'patrol' && !g.hover) {
     g.eng.setGaze({ yaw: g.vx * 32, pitch: 4, mix: 1, spin: 0, wander: 0.2 }, t);
@@ -100,30 +111,41 @@ function gaze(g, t) {
     return;
   }
   if (!pointer.on) { if (g.gazeOn) { g.eng.setGaze(null, t); g.gazeOn = false; } return; }
-  const r = g.el.getBoundingClientRect();
-  const dx = pointer.x - (r.left + r.width / 2), dy = pointer.y - (r.top + r.height / 2);
+  const r = rect(g, t);
+  const dx = pointer.x - r.cx, dy = pointer.y - r.cy;
   const d = Math.hypot(dx, dy);
   if (d > 700) { if (g.gazeOn) { g.eng.setGaze(null, t); g.gazeOn = false; } return; }
   g.eng.setGaze({ yaw: clamp(dx / 7, -38, 38), pitch: clamp(-dy / 9, -26, 26), mix: 1, spin: 0, wander: 0.15 }, t);
   g.gazeOn = true;
 }
 
-function boot() {
-  const els = [...document.querySelectorAll('[data-grunt]')];
+const grunts = [];
+const seen = new WeakSet();
+let io = null, looping = false, broken = false;
+// bring any [data-grunt] under root to life. the page calls it at load; the canvas
+// calls it again for the little guys that live on cards it builds later
+export function adopt(root = document) {
+  if (broken) return;
+  const els = [...root.querySelectorAll('[data-grunt]')].filter((el) => !seen.has(el));
   if (!els.length) return;
-  let grunts;
-  try { grunts = els.map(make); } catch (err) {
-    console.warn('grunts: staying home', err);
-    document.documentElement.classList.add('no-grunts');
-    return;
-  }
-
-  const io = new IntersectionObserver((entries) => {
-    for (const e of entries) { const g = grunts.find((x) => x.el === e.target); if (g) g.visible = e.isIntersecting; }
+  io ??= new IntersectionObserver((entries) => {
+    for (const e of entries) { const g = grunts.find((x) => x.el === e.target); if (g) { g.visible = e.isIntersecting; g.rectAt = -1; } }
   }, { rootMargin: '80px' });
-  grunts.forEach((g) => { io.observe(g.el); draw(g, true); });
-  if (reduce) return;
-
+  for (const el of els) {
+    seen.add(el);
+    let g;
+    try { g = make(el, grunts.length); } catch (err) {
+      console.warn('grunts: staying home', err);
+      document.documentElement.classList.add('no-grunts');
+      broken = true;
+      return;
+    }
+    grunts.push(g);
+    io.observe(el);
+    draw(g, true);
+  }
+  if (reduce || looping) return;
+  looping = true;
   let last = now();
   const loop = () => {
     requestAnimationFrame(loop);
@@ -131,8 +153,10 @@ function boot() {
     const t = now(), dt = Math.min(0.05, t - last);
     last = t;
     for (const g of grunts) {
-      // the guide lives in a fixed box that is hidden until you scroll; still cheap to skip
-      if (!g.visible) continue;
+      // off screen, or inside something inert (the call to action before it lands): skip
+      if (!g.visible || !g.el.isConnected) continue;
+      rect(g, t);
+      if (g.asleep) continue;
       if (g.until && t > g.until) { g.until = 0; g.eng.setState(g.hover ? 'excited' : g.rest, t); }
       if (!g.hover && !g.until && t > g.nextMood) {
         const mood = g.moods[Math.floor(Math.random() * g.moods.length)];
@@ -148,4 +172,5 @@ function boot() {
   requestAnimationFrame(loop);
 }
 
-boot();
+adopt();
+window.__grunts = { adopt };
