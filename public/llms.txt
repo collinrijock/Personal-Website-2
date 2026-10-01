@@ -51,3 +51,7 @@ on my own time:
 - legends of the friendgroup: a pixel-art tavern auto-battler, built with agents driving unity. https://github.com/collinrijock/LegendsOfTheFriendgroup
 - pokemon showdown bot: a deep reinforcement learning bot. https://github.com/collinrijock/Pokemon-Showdown-Bot
 - carecart: matched volunteers with people who needed groceries (shellhacks 2020). https://devpost.com/software/carecart-r6gckp
+
+under nda:
+
+- a few personal projects and side work aren't public yet (nothing from exowatt; that stays inside). people can sign a short nda and request access at https://collinrijock.com/nda. i approve each request by hand, and approved people get a private link by email. there is nothing to read here or on that page without that access.

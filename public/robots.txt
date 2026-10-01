@@ -1,4 +1,6 @@
 User-agent: *
 Allow: /
+Disallow: /nda
+Disallow: /api/
 
 Sitemap: https://collinrijock.com/sitemap.xml
