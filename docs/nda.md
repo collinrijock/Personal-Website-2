@@ -52,14 +52,67 @@ Tokens are `base64url(json).base64url(hmac-sha256)`, keyed by `NDA_SECRET` and c
 | `lib/nda/token.ts` | signed tokens |
 | `lib/nda/mail.ts`, `lib/nda/emails.ts` | nodemailer transport and the three emails |
 | `lib/nda/sections.ts` | the four sections: ids, labels, order, and parsing a posted list |
-| `lib/nda/markdown.ts`, `lib/nda/content.ts` | the escaped markdown renderer and the per-section content loader |
+| `lib/nda/markdown.ts`, `lib/nda/content.ts` | the escaped markdown renderer (media embeds included) and the per-section content loader |
+| `lib/nda/media.ts` | media filenames and content types |
 | `pages/api/nda/{terms,request,decide}.ts` | the api |
+| `pages/api/nda/media/[section]/[file].ts` | gated media, served at `/nda/media/<section>/<file>` via a rewrite in `next.config.js` |
 | `pages/nda/{index,decide,access}.tsx` | the pages |
 | `scripts/nda.mjs` | the cli |
 | `docs/sections.example/<id>.md` | the shape of each section file (placeholders only) |
 | `public/js/nda.js`, `public/css/nda.css` | the modal and page styles; the canvas strip is in `public/js/board.js` and `public/css/board.css` |
 
 The front-end source of truth is `personal-sites-2026-09-27/site-e-gradient/`. Copy changed files into `public/` from there.
+
+## media
+
+Section files can embed videos and images. The files live next to the sections, never in git or `public/`:
+
+```
+NDA_DATA_DIR/media/<section>/<file>     e.g. ~/srv/personal-website/shared/nda/media/exowatt/tour.mp4
+```
+
+```sh
+mkdir -p ~/srv/personal-website/shared/nda/media/exowatt
+cp tour.mp4 tour.jpg ~/srv/personal-website/shared/nda/media/exowatt/
+chmod 700 ~/srv/personal-website/shared/nda/media ~/srv/personal-website/shared/nda/media/* && chmod 600 ~/srv/personal-website/shared/nda/media/*/*
+```
+
+**Names.** A letter or digit first, then letters, digits, `.`, `_` or `-`, up to about 100 characters, ending in `.mp4`, `.webm`, `.jpg`, `.jpeg` or `.png` (lowercase). No subfolders. Anything else is a 404. Encode video as H.264 + AAC with `-movflags +faststart` so it starts before the whole file arrives.
+
+**Markdown.** On a line of its own:
+
+| line | renders |
+|---|---|
+| `![video](media/exowatt/tour.mp4 "media/exowatt/tour.jpg")` | a `<video controls preload="metadata" playsinline>` with that poster, no caption |
+| `![video: lightspeed tour](media/exowatt/tour.mp4 "tour.jpg")` | the same, caption "lightspeed tour". A bare poster name is looked up in the video's own dir |
+| `![video](media/exowatt/tour.webm)` | a video with no poster |
+| `![the dashboard](media/exowatt/dash.png)` | an `<img loading="lazy" alt="the dashboard">`, no caption |
+
+- **Captions.** A video's caption is its alt text with a leading `video:` dropped. An alt of just `video` means no caption. Images have no caption: the alt text is the `alt` attribute.
+- **Strict.** The path must be exactly `media/<one of the four ids>/<a valid name>`, and the poster an image. Anything else, including an embed in the middle of a sentence, an outside URL, a title on an image, or a bad poster, renders as escaped plain text. Raw `<video>` or `<img>` html is escaped like all html.
+- **Plain HTML.** The embed is a `<figure class="nda-media">` styled in `nda.css`. It uses native controls, so `/nda` still ships no JavaScript.
+
+**The url** is `/nda/media/<section>/<file>`. It's an api route, `pages/api/nda/media/[section]/[file].ts`, reached through a `beforeFiles` rewrite in `next.config.js`. It lives under `/nda` because the access cookie is `Path=/nda`, and widening the cookie's path would send it to the whole site. A direct hit on `/api/nda/media/...` carries no cookie from a browser, so it gets a 403. Someone holding the cookie value could send it there by hand. That only gets them what `/nda/media` would already give them, because the checks are the same.
+
+**What the route checks, in order** (before it touches the disk):
+
+1. **Method.** GET and HEAD only. Anything else gets a 405 with `Allow: GET, HEAD`.
+2. **Access.** It needs a valid signed cookie and a request that's still approved, the same check as `/nda`. Otherwise it's a 403.
+3. **Section.** It must be one of the four ids, or it's a 404.
+4. **Grant.** A section the person wasn't granted gets a 403, whether or not the file exists. `grant`, `ungrant` and `revoke` apply on the next request.
+
+Then it checks the name and that the resolved path stays inside `media/<section>/`. It does the same for the real path (`realpath`), so a symlink pointing outside the dir is refused. Only regular files are served. Every failure past the grant check is a 404.
+
+**Headers.** Every response, errors included, gets `Cache-Control: private, no-store`, `X-Robots-Tag: noindex, nofollow`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`, `Cross-Origin-Resource-Policy: same-origin` and `Accept-Ranges: bytes`. Files also get `Content-Disposition: inline`, a content type from the extension, an `ETag` and `Last-Modified`.
+
+**Ranges.** One range per request: `bytes=a-b`, `bytes=a-` or `bytes=-n`. A valid one gets a 206 with `Content-Range`. A start past the end of the file, or `bytes=-0`, gets a 416 with `Content-Range: bytes */<size>`. Multiple ranges, a malformed header, or a backwards range are ignored, and the whole file comes back with a 200. `If-Range` is honoured against the ETag or `Last-Modified`. The file streams from disk, and the stream is closed if the viewer leaves mid-file.
+
+**Limits.**
+
+- `/nda/media` is `no-store`, so a browser fetches the video again on every visit.
+- The files are served by the Node process, not a CDN. That's fine for short demos. Keep big files modest, because every viewer streams from the Mac.
+- Media referenced from another section's file is only served to people granted that section. Everyone else sees a broken player.
+- A bare encoded dot segment (`/nda/media/exowatt/%2e%2e`) gets Next's own path-normalising 308 before any route runs. It serves no content.
 
 ## env vars
 
@@ -175,8 +228,9 @@ Emails land in `/tmp/nda-test/outbox/`. `site-e-gradient/tools/shots-nda.mjs [ba
 - access, with only the granted sections in the HTML
 - the lock page, forged and expired tokens, second decisions, and limits
 - the CLI, including `grant` / `ungrant`, a missing section file, and the `projects.md` fallback
+- media: a granted file, with its headers; ranges (206, 416, ignored); HEAD and If-Range; ungranted sections, no cookie, forged cookies, and revoke / ungrant; traversal, dotfiles, symlinks out, and non-media names; the direct `/api` url; 405; the embeds on `/nda`, malicious embeds that stay text, and the browser loading the video
 
-It writes its own fake section files into `<data dir>/sections/` and `shots/nda-*.png`. Run it against a freshly started server, because the rate limits are in memory and a second run on the same server trips them.
+It writes its own fake section files into `<data dir>/sections/`, and fake media into `<data dir>/media/`. That's a real 2-second mp4, a poster and a png when `ffmpeg` is installed, and random bytes otherwise. Screenshots go to `shots/nda-*.png`. Run it against a freshly started server, because the rate limits are in memory and a second run on the same server trips them.
 
 The standalone `server.js` forks, and the child holds the port. To stop it, kill both PIDs (`lsof -tnP -iTCP:3102 -sTCP:LISTEN` gives the child).
 

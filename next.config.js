@@ -9,6 +9,9 @@ const nextConfig = {
       beforeFiles: [
         { source: "/", destination: "/index.html" },
         { source: "/map", destination: "/map.html" },
+        // nda media lives under /nda so the access cookie (Path=/nda) rides
+        // along; the handler is an api route. see docs/nda.md "media".
+        { source: "/nda/media/:section/:file", destination: "/api/nda/media/:section/:file" },
       ],
     };
   },

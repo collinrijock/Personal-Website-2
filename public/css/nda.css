@@ -259,3 +259,10 @@ body:has(.nda-doc) { height: auto; min-height: 100vh; letter-spacing: normal; li
   .nda-chips { grid-template-columns: 1fr; }
   .nda-chip { height: 46px; font-size: 15px; }
 }
+
+/* /nda media: <video> and <img> from the section files (served by /nda/media/...) */
+.nda-media { margin: 20px 0 0; }
+.nda-media video, .nda-media img { display: block; width: 100%; max-width: 100%; height: auto; aspect-ratio: auto; border-radius: 14px; box-shadow: 0 0 0 1px var(--line); }
+.nda-media video { background: #000; }
+.nda-media img { width: auto; }
+.nda-media figcaption { margin-top: 8px; color: var(--ink-3); font: 400 13px/1.45 var(--mono); }
