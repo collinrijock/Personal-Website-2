@@ -3,7 +3,8 @@
 // strip, the line under the board). it loads the agreement from the server, so
 // what's signed is exactly what the server will store, and posts the request
 // to /api/nda/request. /#request-access opens it on load (the /nda lock page
-// links there).
+// links there). the optional "most interested in" boxes are a hint for collin;
+// he picks what they can see when he approves.
 
 const dlg = document.getElementById('nda-dialog');
 const form = dlg?.querySelector('.nda-form');
@@ -76,6 +77,7 @@ if (dlg && form) {
     const v = (k) => String(f.get(k) || '').trim();
     const body = {
       name: v('name'), email: v('email'), company: v('company'), reason: v('reason'),
+      interests: f.getAll('interests').map(String),
       signature: v('signature'), agree: f.get('agree') === 'on', website: v('website'),
       nda_version: terms?.version || '',
     };

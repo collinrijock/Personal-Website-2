@@ -133,7 +133,7 @@ body:has(.nda-doc) { height: auto; min-height: 100vh; letter-spacing: normal; li
 .nda-projects { display: grid; gap: 18px; }
 .nda-proj { padding: clamp(22px, 3vw, 32px); border-radius: 20px; background: var(--bg); box-shadow: 0 0 0 1px var(--line), 0 24px 60px -34px rgba(24, 10, 70, .25); position: relative; overflow: hidden; }
 .nda-proj::before { content: ""; position: absolute; inset: 0 0 auto 0; height: 3px; background: linear-gradient(90deg, var(--c1), var(--c0), var(--c2), var(--c3)); opacity: .9; }
-.nda-proj h2 { font-size: 26px; font-weight: 600; letter-spacing: -0.03em; }
+.nda-proj h2, .nda-proj h3 { font-size: 26px; font-weight: 600; letter-spacing: -0.03em; }
 .nda-prose { margin-top: 10px; color: var(--ink-2); font-size: 16px; line-height: 1.65; }
 .nda-prose > * + * { margin-top: 12px; }
 .nda-prose h3, .nda-prose h4 { color: var(--ink); font-size: 17px; font-weight: 600; letter-spacing: -0.015em; margin-top: 20px; }
@@ -173,4 +173,89 @@ body:has(.nda-doc) { height: auto; min-height: 100vh; letter-spacing: normal; li
   .nda-facts { grid-template-columns: 1fr; }
   .nda-facts dt { border-bottom: 0; padding-bottom: 0; }
   .nda-facts dd { padding-top: 2px; }
+}
+
+/* ── sections ──
+   four fixed sections: exowatt, grunts, personal projects, previous employers.
+   the modal asks which ones someone is most interested in (a hint); the
+   decide page has collin's toggles; /nda shows only the granted ones. */
+
+/* the modal's "most interested in" chips (js/nda.js posts them as interests) */
+.nda-interests { border: 0; padding: 0; margin: 0; min-width: 0; }
+.nda-interests legend { padding: 0; margin-bottom: 8px; font: 500 12.5px/1 var(--mono); color: var(--ink-3); letter-spacing: .01em; }
+.nda-interests legend em { font-style: normal; opacity: .7; }
+.nda-ichips { display: flex; flex-wrap: wrap; gap: 8px; }
+.nda-ichip {
+  position: relative; display: inline-flex; align-items: center; gap: 7px; height: 36px; padding: 0 14px; border-radius: 999px;
+  border: 1px solid var(--line); background: color-mix(in srgb, var(--ink) 2.5%, var(--bg)); color: var(--ink-2);
+  font: 500 14px/1 var(--sans); cursor: pointer; user-select: none; -webkit-user-select: none;
+  transition: background .15s, border-color .15s, color .15s;
+}
+.nda-ichip input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
+.nda-ichip:hover { color: var(--ink); border-color: color-mix(in srgb, var(--ink) 22%, var(--line)); }
+.nda-ichip:has(input:checked) { background: var(--ink); border-color: var(--ink); color: var(--bg); }
+.nda-ichip:has(input:checked) span::before { content: "✓"; margin-right: 6px; font-weight: 600; }
+.nda-ichip:has(input:focus-visible) { outline: 2px solid var(--c0); outline-offset: 2px; }
+.nda-ihint { margin-top: 2px; font-size: 13px; line-height: 1.45; color: var(--ink-3); }
+
+/* the decide page: collin's four toggles. no javascript: the count on the
+   button is a css counter over the ticked boxes, and :has() handles
+   "pick at least one" and one-vs-several */
+.nda-pick { display: block; counter-reset: picked; }
+.nda-chips { position: relative; border: 0; padding: 0; margin: 0; min-width: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; max-width: 560px; }
+.nda-chips legend { padding: 0; margin-bottom: 12px; font: 500 12.5px/1 var(--mono); color: var(--ink-3); letter-spacing: .01em; }
+.nda-chk { position: absolute; width: 1px; height: 1px; margin: 0; opacity: 0; pointer-events: none; }
+.nda-chk:checked { counter-increment: picked; }
+.nda-chip {
+  display: flex; align-items: center; gap: 10px; height: 48px; padding: 0 18px 0 13px; border-radius: 999px;
+  border: 1.5px solid var(--line); background: var(--bg); color: var(--ink-2);
+  font: 500 16px/1 var(--sans); letter-spacing: -0.01em; cursor: pointer; user-select: none; -webkit-user-select: none;
+  transition: background .15s, border-color .15s, color .15s, transform .15s;
+}
+.nda-chip:hover { color: var(--ink); border-color: color-mix(in srgb, var(--ink) 28%, var(--line)); }
+.nda-chip:active { transform: scale(.98); }
+.nda-tick { position: relative; width: 20px; height: 20px; flex: none; border-radius: 50%; border: 1.5px solid color-mix(in srgb, var(--ink) 26%, var(--line)); transition: background .15s, border-color .15s; }
+.nda-chk:checked + .nda-chip { background: var(--ink); border-color: var(--ink); color: var(--bg); }
+.nda-chk:checked + .nda-chip .nda-tick { background: #fff; border-color: #fff; }
+.nda-chk:checked + .nda-chip .nda-tick::after { content: ""; position: absolute; left: 6px; top: 2.5px; width: 5px; height: 10px; border: solid var(--ink); border-width: 0 2px 2px 0; transform: rotate(45deg); }
+.nda-chk:focus-visible + .nda-chip { outline: 2px solid var(--c0); outline-offset: 3px; }
+.nda-asked { margin-left: 2px; padding: 4px 7px; border-radius: 999px; font: 500 11px/1 var(--mono); font-style: normal; background: color-mix(in srgb, var(--c0) 13%, var(--bg)); color: color-mix(in srgb, var(--c0) 80%, var(--ink)); }
+.nda-chk:checked + .nda-chip .nda-asked { background: rgba(255, 255, 255, .16); color: #fff; }
+.nda-none { display: none; margin-top: 14px; font-size: 14.5px; color: #a3213d; }
+.nda-pick:not(:has(.nda-chk:checked)) .nda-none { display: block; }
+.nda-confirm-row { margin-top: 24px; display: flex; flex-wrap: wrap; align-items: center; gap: 12px 18px; }
+.nda-confirm-row .nda-dim { font-size: 14px; }
+.nda-pick:not(:has(.nda-chk:checked)) .nda-approve { opacity: .38; pointer-events: none; box-shadow: none; }
+.nda-n0, .nda-s0 { display: none; }
+.nda-n::before { content: counter(picked); font-variant-numeric: tabular-nums; }
+.nda-s::after { content: "s"; }
+.nda-pick:has(.nda-chk:checked):not(:has(.nda-chk:checked ~ .nda-chk:checked)) .nda-s::after { content: ""; }
+.nda-alt { margin-top: 16px; }
+.nda-deny-btn {
+  padding: 6px 0; border: 0; background: none; cursor: pointer;
+  color: #a3213d; font: 500 15px/1.4 var(--sans);
+  text-decoration: underline; text-decoration-color: #f2c4cd; text-underline-offset: 5px; text-decoration-thickness: 1.5px;
+}
+.nda-deny-btn:hover { text-decoration-color: #a3213d; }
+.nda-decide .nda-why { margin-bottom: 18px; }
+.nda-cansee { font-weight: 600; }
+
+/* /nda: one block per granted section, in a fixed order */
+.nda-toc { margin-top: 22px; display: flex; flex-wrap: wrap; gap: 8px; }
+.nda-toc a { padding: 8px 14px; border-radius: 999px; border: 1px solid var(--line); font: 500 13px/1 var(--mono); color: var(--ink-2); transition: border-color .15s, color .15s; }
+.nda-toc a:hover { color: var(--ink); border-color: color-mix(in srgb, var(--ink) 25%, var(--line)); }
+.nda-sec { scroll-margin-top: 24px; }
+.nda-sec + .nda-sec { margin-top: clamp(44px, 7vw, 72px); }
+.nda-sec-h { display: flex; align-items: center; gap: 12px; font-size: clamp(26px, 3.6vw, 34px); font-weight: 600; letter-spacing: -0.035em; }
+.nda-sec-h::before { content: ""; width: 10px; height: 10px; flex: none; border-radius: 50%; background: linear-gradient(135deg, var(--c1), var(--c0) 55%, var(--c2)); }
+.nda-sec .nda-intro { margin-top: 10px; max-width: 58ch; color: var(--ink-2); font-size: 17px; }
+.nda-sec .nda-projects { margin-top: 20px; }
+.nda-sec .nda-empty { margin-top: 10px; font-size: 16px; }
+.nda-proj h3 { font-size: 24px; line-height: 1.15; font-weight: 600; letter-spacing: -0.03em; }
+.nda-prose h5, .nda-prose h6 { color: var(--ink); font-size: 16px; font-weight: 600; margin-top: 18px; }
+
+.nda-asked { margin-left: auto; }
+@media (max-width: 560px) {
+  .nda-chips { grid-template-columns: 1fr; }
+  .nda-chip { height: 46px; font-size: 15px; }
 }
