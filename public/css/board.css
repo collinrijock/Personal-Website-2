@@ -60,11 +60,11 @@ html:not(.js) .board { opacity: 1; height: auto; padding: clamp(14px, 2vw, 28px)
 /* the same title, big, for when you're zoomed out: it sits over the top of the region */
 .board .frame .big {
   position: absolute; left: 14px; top: 10px; right: 14px; z-index: 3; pointer-events: none;
-  font: 600 calc(17.5px * var(--iz)) / 1.02 var(--sans); letter-spacing: -0.03em; color: var(--pi);
-  text-shadow: 0 0 calc(6px * var(--iz)) var(--p), 0 0 calc(2px * var(--iz)) var(--p);
-  opacity: 0; transition: opacity .25s ease;
+  font: 600 calc(17.5px * var(--iz)) / 1.02 var(--sans); letter-spacing: -0.03em; color: var(--pi); overflow-wrap: anywhere;
+  /* out of the paint path entirely until it's needed (an opacity-0 element with a shadow still costs every frame) */
+  visibility: hidden;
 }
-.board[data-lod="mid"] .frame .big, .board[data-lod="low"] .frame .big { opacity: 1; }
+.board[data-lod="mid"] .frame .big, .board[data-lod="low"] .frame .big { visibility: visible; }
 .board[data-lod="mid"] .frame .ft > span, .board[data-lod="low"] .frame .ft > span { opacity: 0; }
 .board[data-lod="low"] .frame { border-width: calc(2px * var(--iz)); }
 /* zoomed out, the cards' words go, and the cards read as coloured blocks */
@@ -328,7 +328,10 @@ html:not(.js) .board { opacity: 1; height: auto; padding: clamp(14px, 2vw, 28px)
   .board .tool[data-tool="frame"], .board .tool[data-tool="text"] { display: none; }
   .board .mode, .board .sim { height: 30px; }
   .board .mode { padding: 0 11px 0 9px; }
-  .board .dock { max-width: calc(100% - 130px); }
+  .board .zoom { padding: 3px; gap: 0; }
+  .board .zoom button { min-width: 26px; height: 26px; padding: 0 6px; }
+  .board .zpct { min-width: 34px; font-size: 11px; }
+  .board .dock { max-width: calc(100% - 196px); }
   .board .sim-x { display: none; }
 }
 @media (hover: none) { .board, .board .bcard { cursor: default; } }

@@ -165,7 +165,7 @@ function buildFrames() {
     else {
       // the title bar, plus the same title big, for when you're zoomed out (css shows one or the other)
       f.el.innerHTML = `<div class="ft"><span>${esc(f.title)}</span>${f.inbox ? '<b class="count">0</b>' : ''}</div><div class="big" aria-hidden="true">${esc(f.title)}</div>`
-        + (f.id === 'now' ? '<span class="grunt g-perch" data-grunt="collin:site:2" data-size="62" data-move="bob" data-moods="curious,happy,wink"></span>' : '');
+        + (f.id === 'now' ? '<span class="grunt g-perch" data-grunt="collin:site:2" data-size="62" data-fps="15" data-move="bob" data-moods="curious,happy,wink"></span>' : '');
     }
     world.insertBefore(f.el, edgeSvg); // under the arrows, which run under the cards
   }
@@ -332,12 +332,17 @@ function dropEdges(c) {
     if (e.a === c || e.b === c) { e.g.classList.add('gone'); e.lab?.classList.add('gone'); const g = e.g, l = e.lab; setTimeout(() => { g.remove(); l?.remove(); }, 400); edges.splice(i, 1); }
   }
 }
+// redrawn only when an end moved: rewriting a path invalidates the world-sized svg, and
+// with it everything painted under it, so an arrow that hasn't moved costs nothing
 function updateEdges() {
   for (const e of edges) {
     const ca = { x: e.a.x + e.a.w / 2, y: e.a.y + e.a.h / 2 };
     const target = e.b.x != null && e.b.w ? { x: e.b.x + e.b.w / 2, y: e.b.y + e.b.h / 2 } : e.b;
     const p = border(e.a, target.x, target.y);
     const q = e.b.w ? border(e.b, ca.x, ca.y) : e.b;
+    const key = `${p.x.toFixed(1)},${p.y.toFixed(1)},${q.x.toFixed(1)},${q.y.toFixed(1)}`;
+    if (key === e.key) continue;
+    e.key = key;
     drawEdge(e, p, q);
   }
 }
@@ -366,7 +371,7 @@ const AGENTS = [0, 1, 2].map((i) => {
 }
 
 // one clock for everything, paused while the board is off screen
-let clock = 0, active = false;
+let clock = 0, active = false, ticks = 0;
 const timers = [];
 const wait = (ms) => new Promise((r) => timers.push({ at: clock + ms, r }));
 
@@ -1009,13 +1014,13 @@ board.addEventListener('focusin', (e) => {
 
 // ── frame loop ──────────────────────────────────────────────────────────
 const zpct = ui.querySelector('.zpct');
-let last = performance.now(), miniKey = '', lodKey = '', cullKey = '';
+let last = performance.now(), miniKey = '', lodKey = '', cullKey = '', gridKey = '', worldKey = '';
 const CULL = 260; // world px beyond the edge a card stays painted
 // zoomed out, cards fade to blocks and the region titles grow (css reads these)
 function lod() {
   const z = view.z;
-  const level = z < 0.3 ? 'low' : z < 0.52 ? 'mid' : 'full';
-  const iz = clamp(1 / z, 1, 4.5);
+  const level = z < 0.36 ? 'low' : z < 0.52 ? 'mid' : 'full';
+  const iz = clamp(1 / z, 1, narrowLayout ? 2.4 : 3.4);
   const key = `${level}|${iz.toFixed(2)}`;
   if (key === lodKey) return;
   lodKey = key;
@@ -1031,10 +1036,15 @@ function cull() {
   }
 }
 function render() {
-  world.style.transform = `translate(${view.x.toFixed(2)}px, ${view.y.toFixed(2)}px) scale(${view.z.toFixed(4)})`;
-  board.style.setProperty('--gx', `${view.x.toFixed(1)}px`);
-  board.style.setProperty('--gy', `${view.y.toFixed(1)}px`);
-  board.style.setProperty('--gs', `${(22 * view.z).toFixed(2)}px`);
+  const wt = `translate(${view.x.toFixed(2)}px, ${view.y.toFixed(2)}px) scale(${view.z.toFixed(4)})`;
+  if (wt !== worldKey) { worldKey = wt; world.style.transform = wt; }
+  const gk = `${view.x.toFixed(1)},${view.y.toFixed(1)},${view.z.toFixed(4)}`;
+  if (gk !== gridKey) {
+    gridKey = gk;
+    board.style.setProperty('--gx', `${view.x.toFixed(1)}px`);
+    board.style.setProperty('--gy', `${view.y.toFixed(1)}px`);
+    board.style.setProperty('--gs', `${(22 * view.z).toFixed(2)}px`);
+  }
   const pctTxt = `${Math.round(view.z * 100)}%`;
   if (zpct.textContent !== pctTxt) zpct.textContent = pctTxt;
   lod();
@@ -1046,8 +1056,10 @@ function render() {
   }
   const inv = 1 / view.z;
   for (const a of AGENTS) {
-    a.el.style.transform = `translate(${a.x.toFixed(1)}px, ${a.y.toFixed(1)}px) scale(${inv.toFixed(4)})`;
-    a.dot.style.left = pct(a.x, WORLD.w); a.dot.style.top = pct(a.y, WORLD.h);
+    const t = `translate(${a.x.toFixed(1)}px, ${a.y.toFixed(1)}px) scale(${inv.toFixed(4)})`;
+    if (t !== a.shownT) { a.el.style.transform = t; a.shownT = t; }
+    const d = `${pct(a.x, WORLD.w)}|${pct(a.y, WORLD.h)}`;
+    if (d !== a.shownD) { a.shownD = d; a.dot.style.left = pct(a.x, WORLD.w); a.dot.style.top = pct(a.y, WORLD.h); }
   }
   // the viewport on the minimap, in world units, clipped by the minimap itself
   const vx = -view.x / view.z, vy = -view.y / view.z, vw = size.w / view.z, vh = size.h / view.z;
@@ -1063,6 +1075,7 @@ function render() {
 }
 function tick(now) {
   requestAnimationFrame(tick);
+  ticks++;
   const dt = Math.min(0.05, (now - last) / 1000);
   last = now;
   if (!active) return;
@@ -1166,6 +1179,7 @@ function boot() {
   // for the shots tools: where things are, and a way to look at one frame
   window.__board = {
     get view() { return { ...view }; },
+    get debug() { return { clock: Math.round(clock), active, ticks, timers: timers.length, agents: AGENTS.map((a) => ({ x: Math.round(a.x), y: Math.round(a.y), tw: !!a.tw, say: a.sayEl.textContent, carry: !!a.carry })), pool: pool.size, inbox: frameOf.inbox.cards.length }; },
     frames: FRAMES.map(({ id, x, y, w, h }) => ({ id, x, y, w, h })), world: { ...WORLD }, narrow: narrowLayout,
     show(id, z = 1) { const f = frameOf[id]; view.tz = z; view.tx = size.w / 2 - (f.x + f.w / 2) * z; view.ty = 64 - f.y * z; clampTargets(); snap(); render(); userMoved(); },
   };

@@ -191,6 +191,9 @@ html:not(.js) .hero-meta { display: none; } /* swatches and hints need the scrip
   cursor: pointer;
   z-index: 2;
   -webkit-tap-highlight-color: transparent;
+  /* its own layer: the svg is redrawn many times a second, and that must only re-paint
+     the little guy, never the text and cards around it */
+  will-change: transform;
 }
 .grunt-body { display: block; width: 100%; height: 100%; }
 /* the svg is redrawn ~30 times a second; a touch that starts on a node that then

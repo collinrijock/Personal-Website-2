@@ -8,6 +8,7 @@
 // data-state  resting state    data-tool   "hammer"
 // data-move   bob | drift | patrol
 // data-moods  comma list of states it drifts into
+// data-fps    redraws a second (default 30; the ones on the canvas use fewer)
 
 import { rollLook, rollName, createMascotEngine, renderFrameToSvg } from './vendor/grunt-mascot.js';
 
@@ -44,7 +45,7 @@ function make(el, i) {
 
   const eng = createMascotEngine(look, { initialState: rest });
   const g = {
-    el, body, bubble, eng, look: { ...look, tool }, size, rest, moods, tool,
+    el, body, bubble, eng, look: { ...look, tool }, size, rest, moods, tool, fps: +el.dataset.fps || FPS,
     prefix: `gr${i}`, move: el.dataset.move || 'bob', phase: i * 1.7 + Math.random() * 3,
     visible: false, hover: false, until: 0, nextMood: now() + 3 + Math.random() * 5, lastDraw: 0,
     x: 0, vx: 1, gazeOn: false, rect: { cx: -1e4, cy: -1e4 }, rectAt: -1, asleep: false,
@@ -67,7 +68,7 @@ function make(el, i) {
 
 function draw(g, force = false) {
   const t = reduce ? g.eng.restPoseTime() : now();
-  if (!force && t - g.lastDraw < 1 / FPS) return;
+  if (!force && t - g.lastDraw < 1 / g.fps) return;
   g.lastDraw = t;
   g.body.innerHTML = renderFrameToSvg(g.eng.sample(t), g.look, g.size, { idPrefix: g.prefix });
 }

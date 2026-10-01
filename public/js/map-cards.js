@@ -42,7 +42,7 @@ export function buildCard(n) {
     case 'quote':
       if (n.look) el.dataset.look = n.look;
       // a quote can carry one of the page's little guys (js/grunts.js adopts it)
-      html = `<p>${esc(n.text)}${n.grunt ? `<span class="grunt g-atoms" data-grunt="${esc(n.grunt)}" data-size="56" data-state="working" data-tool="hammer" data-move="bob" data-moods="working,proud"></span>` : ''}</p>`;
+      html = `<p>${esc(n.text)}${n.grunt ? `<span class="grunt g-atoms" data-grunt="${esc(n.grunt)}" data-size="56" data-fps="15" data-state="working" data-tool="hammer" data-move="bob" data-moods="working,proud"></span>` : ''}</p>`;
       break;
     case 'sticky':
       el.dataset.color = n.color;
