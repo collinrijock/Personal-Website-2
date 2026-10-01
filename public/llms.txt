@@ -1,6 +1,6 @@
 # collin rijock
 
-> software engineer in miami. lead software engineer at exowatt. i think hardware is the future for software engineers, so i'm getting into it.
+> software engineer in miami. lead software engineer at exowatt. i love building software, and i'm getting into building hardware.
 
 - email: collin@rijock.com
 - x / twitter: https://x.com/CollinRijock
@@ -9,11 +9,11 @@
 - writing: https://app.collinrijock.com/blog
 - the map (everything on this site as a 3d brainstorm): map.html
 
-## where i'm headed
+## how i build
 
-- agents made code cheap. atoms are still hard.
-- the next great software will run things you can touch.
-- at exowatt, mine already commands real batteries.
+- i love building software.
+- i build a lot of it, with a lot of agents.
+- and i'm getting into building hardware.
 - climb the mountain.
 
 ## now

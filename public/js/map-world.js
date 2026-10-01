@@ -12,7 +12,7 @@ const V3 = THREE.Vector3;
 const DEG = Math.PI / 180;
 const FOV = 50;
 const UP = new V3(0, 1, 0);
-export const TOUR = ['me', 'vision', 'exowatt', 'xmade', 'charles', 'work', 'things', 'games', 'writing', 'before', 'stack', 'links']
+export const TOUR = ['me', 'vision', 'exowatt', 'xmade', 'charles', 'work', 'things', 'games', 'ideas', 'writing', 'before', 'stack', 'links']
   .filter((id) => CLUSTERS.some((c) => c.id === id));
 
 const PAD = 34, BAR = 54; // frame padding and title bar, in card pixels

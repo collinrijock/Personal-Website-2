@@ -14,13 +14,14 @@
 
 export const CLUSTERS = [
   { id: 'me', title: 'collin rijock', color: 'white' },
-  { id: 'vision', title: "where i'm headed", color: 'yellow' },
+  { id: 'vision', title: 'how i build', color: 'yellow' },
   { id: 'exowatt', title: 'exowatt · now', color: 'blue' },
   { id: 'xmade', title: "things i've made · at exowatt", color: 'blue' },
   { id: 'charles', title: 'super charles · on the side', color: 'purple' },
   { id: 'work', title: 'how i work', color: 'green' },
   { id: 'things', title: "things i've made · on my own time", color: 'pink' },
   { id: 'games', title: 'games i make', color: 'purple' },
+  { id: 'ideas', title: 'ideas i keep coming back to', color: 'green' },
   { id: 'writing', title: 'writing', color: 'gray' },
   { id: 'before', title: 'before', color: 'gray' },
   { id: 'stack', title: 'tools', color: 'white' },
@@ -39,11 +40,11 @@ export const NODES = [
   { id: 'fiu', cluster: 'me', type: 'sticky', color: 'white', text: 'b.s. computer science, **fiu**.' },
 
   // ── vision ──
-  { id: 'v-future', cluster: 'vision', type: 'quote', text: 'hardware is the future of software engineers.' },
-  { id: 'v-cheap', cluster: 'vision', type: 'sticky', color: 'yellow', text: 'agents made code cheap. **atoms are still hard.**' },
-  { id: 'v-touch', cluster: 'vision', type: 'sticky', color: 'yellow', text: 'the next great software will run things you can touch: power, machines, sites.' },
-  { id: 'v-already', cluster: 'vision', type: 'sticky', color: 'blue', text: 'my software already commands **real batteries**.' },
-  { id: 'v-going', cluster: 'vision', type: 'sticky', color: 'pink', text: "so that's where i'm going." },
+  { id: 'v-future', cluster: 'vision', type: 'quote', text: "i love building software, and i'm getting into building hardware." },
+  { id: 'v-cheap', cluster: 'vision', type: 'sticky', color: 'yellow', text: 'i build a lot of software, **with a lot of agents.**' },
+  { id: 'v-touch', cluster: 'vision', type: 'sticky', color: 'yellow', text: 'the useful version is not chat-first. **bounded work, visible state**, projects that ship.' },
+  { id: 'v-already', cluster: 'vision', type: 'sticky', color: 'blue', text: 'lately some of it runs **real hardware**: batteries, energy sites.' },
+  { id: 'v-going', cluster: 'vision', type: 'sticky', color: 'pink', text: 'breadth first, ai native.' },
   { id: 'v-mountain', cluster: 'vision', type: 'quote', text: 'climb the mountain. do hard things.' },
 
   // ── exowatt ──
@@ -66,13 +67,13 @@ export const NODES = [
   { id: 'c-link', cluster: 'charles', type: 'link', title: 'super charles', url: 'https://app.collinrijock.com', note: 'my life os, with agents that do the work' },
   { id: 'c-db', cluster: 'charles', type: 'quote', text: 'my life on one postgres db.' },
   { id: 'c-what', cluster: 'charles', type: 'sticky', color: 'purple', text: 'tasks, calendar, health and money, **with agents that do the work**.' },
-  { id: 'c-chief', cluster: 'charles', type: 'sticky', color: 'purple', text: 'an ai chief of staff and a crew of resident agents.' },
+  { id: 'c-chief', cluster: 'charles', type: 'sticky', color: 'purple', text: 'an ai chief of staff and a lot of resident agents.' },
   { id: 'c-mcp', cluster: 'charles', type: 'sticky', color: 'white', text: 'web, mobile and desktop apps, plus an mcp server.' },
   { id: 'c-mini', cluster: 'charles', type: 'sticky', color: 'gray', text: 'self-hosted on a **mac mini** at home.' },
   { id: 'c-know', cluster: 'charles', type: 'sticky', color: 'yellow', text: '"know thyself."' },
 
   // ── how i work ──
-  { id: 'w-sidecar', cluster: 'work', type: 'quote', text: 'agents are not a sidecar to the work. they change the shape of the work.' },
+  { id: 'w-sidecar', cluster: 'work', type: 'quote', text: 'i love building software.' },
   { id: 'w-bounded', cluster: 'work', type: 'sticky', color: 'green', text: 'not chat-first. **bounded work, visible state**, projects that ship.' },
   { id: 'w-breadth', cluster: 'work', type: 'sticky', color: 'green', text: 'breadth first, ai native.' },
   { id: 'w-proof', cluster: 'work', type: 'sticky', color: 'yellow', text: 'proof over pitch.' },
@@ -109,11 +110,38 @@ export const NODES = [
 
   // ── writing ──
   { id: 'r-blog', cluster: 'writing', type: 'link', title: 'the blog', url: 'https://app.collinrijock.com/blog', note: 'essays and drafts' },
-  { id: 'r-dems', cluster: 'writing', type: 'sticky', color: 'white', text: '**democrats in the seventh party system.** "2016 ruined the democratic party and it wasn\'t trump."' },
-  { id: 'r-breadth', cluster: 'writing', type: 'sticky', color: 'gray', text: '**breadth and ai first.** why generalists who go deep when it counts have an edge.' },
-  { id: 'r-founders', cluster: 'writing', type: 'sticky', color: 'gray', text: '**pantheon of founders.** archetypes, and what their journeys teach.' },
-  { id: 'r-china', cluster: 'writing', type: 'sticky', color: 'yellow', text: '**china.** super-apps, and the pace of hardware in shenzhen.' },
-  { id: 'r-mini', cluster: 'writing', type: 'sticky', color: 'gray', text: 'the mac mini used to be cringe for server hosting.' },
+  { id: 'r-dems', cluster: 'writing', type: 'link', title: 'democrats in the seventh party system', url: 'https://app.collinrijock.com/blog/democrats-in-the-seventh-party-system', note: '"2016 ruined the democratic party and it wasn\'t trump." · jan 2026' },
+  { id: 'r-breadth', cluster: 'writing', type: 'link', title: 'breadth and ai first', url: '/essays/personal-philosophy', note: 'why generalists who go deep when it counts have an edge. draft' },
+  { id: 'r-founders', cluster: 'writing', type: 'link', title: 'pantheon of founders', url: '/essays/pantheon-of-founders', note: 'the visionary, the executor, the disruptor, the builder. draft' },
+  { id: 'r-china', cluster: 'writing', type: 'link', title: 'china', url: '/essays/china', note: 'super-apps, and hardware at shenzhen speed. draft' },
+  { id: 'r-mini', cluster: 'writing', type: 'sticky', color: 'gray', text: '**next up:** the mac mini used to be cringe for server hosting. now it\'s my favourite server.' },
+  { id: 'r-data', cluster: 'writing', type: 'sticky', color: 'gray', text: '**next up:** own your data in the age of llms.' },
+
+  // ── ideas ──
+  { id: 'i-build', cluster: 'ideas', type: 'quote', text: 'i like building software, writing about ideas, and figuring out how things work.' },
+  { id: 'i-breadth', cluster: 'ideas', type: 'sticky', color: 'green', text: '**breadth first, ai native.** the engineer who ships across the stack beats the one waiting for tickets.' },
+  { id: 'i-own', cluster: 'ideas', type: 'sticky', color: 'green', text: 'own the system end to end. **that\'s the edge.**' },
+  { id: 'i-dead', cluster: 'ideas', type: 'sticky', color: 'yellow', text: 'features nobody uses aren\'t free. **cut them or fix them.**' },
+  { id: 'i-files', cluster: 'ideas', type: 'sticky', color: 'white', text: '**files are the only truth.** every other store is a rebuildable cache.' },
+  { id: 'i-loud', cluster: 'ideas', type: 'sticky', color: 'pink', text: 'failures should be loud. a pipeline dead for weeks at log level info is lying to you.' },
+  { id: 'i-algo', cluster: 'ideas', type: 'sticky', color: 'white', text: 'make the requirements less dumb. **delete. simplify.** then speed up. automate last.' },
+  { id: 'i-loop', cluster: 'ideas', type: 'sticky', color: 'purple', text: '**code owns the loop.** the model makes typed judgments inside it.' },
+  { id: 'i-bounded', cluster: 'ideas', type: 'sticky', color: 'purple', text: 'agents get **bounded, reversible** work. never delete, never move money, one task per run.' },
+  { id: 'i-quiet', cluster: 'ideas', type: 'sticky', color: 'purple', text: 'a good agent is quiet by default. text me when it matters, with a link to the thing.' },
+  { id: 'i-undo', cluster: 'ideas', type: 'sticky', color: 'blue', text: '**reversibility makes yes cheap.** propose the write, ship the undo.' },
+  { id: 'i-typed', cluster: 'ideas', type: 'sticky', color: 'blue', text: 'typed model first, llm only when it\'s unsure. most of the quality for a fraction of the cost.' },
+  { id: 'i-kb', cluster: 'ideas', type: 'sticky', color: 'yellow', text: 'what\'s your favourite knowledge base for agents?' },
+  { id: 'i-protocols', cluster: 'ideas', type: 'sticky', color: 'green', text: '**protocols before tools.** write the system down, then automate it.' },
+  { id: 'i-block', cluster: 'ideas', type: 'sticky', color: 'white', text: 'one concrete deliverable per block beats a vague intention.' },
+  { id: 'i-data', cluster: 'ideas', type: 'sticky', color: 'yellow', text: 'data is the truth i tell myself when i stop lying.' },
+  { id: 'i-decade', cluster: 'ideas', type: 'sticky', color: 'green', text: 'compounding beats intensity. anyone can do a hard week. **almost nobody does a decent decade.**' },
+  { id: 'i-cli', cluster: 'ideas', type: 'sticky', color: 'gray', text: 'clis over guis. bun over npm. answer first.' },
+  { id: 'i-operator', cluster: 'ideas', type: 'sticky', color: 'pink', text: '**operator, not hustler.**' },
+  { id: 'i-tenyear', cluster: 'ideas', type: 'sticky', color: 'pink', text: 'non-consensus ten-year ideas beat two-year clones.' },
+  { id: 'i-friends', cluster: 'ideas', type: 'sticky', color: 'yellow', text: 'build what you and your friends actually want. (paul graham, but true)' },
+  { id: 'i-founders', cluster: 'ideas', type: 'sticky', color: 'white', text: 'i read founders like codebases: hundreds of founders episodes, searchable.' },
+  { id: 'i-kobe', cluster: 'ideas', type: 'sticky', color: 'gray', text: 'fundamentals over shiny objects. kinda like kobe.' },
+  { id: 'i-colossus', cluster: 'ideas', type: 'sticky', color: 'blue', text: 'a colossus is a level, not an enemy.' },
 
   // ── before ──
   { id: 'b-buildrfi', cluster: 'before', type: 'sticky', color: 'white', text: '**buildrfi.** first engineer. a contractor lending product, zero to live loans.' },
@@ -187,4 +215,7 @@ export const EDGES = [
   ['miami', 'fiu'],
   ['f-github', 't-skills'], ['f-x', 'name'], ['f-mail', 'name', 'say hi'],
   ['r-blog', 'r-dems'],
+  ['i-loop', 't-jev', 'how jev works'], ['i-typed', 't-jev'], ['i-bounded', 'c-chief', 'the contract'], ['i-quiet', 'c-chief'],
+  ['i-files', 'c-db'], ['i-breadth', 'r-breadth', 'wrote about it'], ['i-founders', 'r-founders'], ['i-protocols', 'w-bounded'],
+  ['i-colossus', 'g-iron', 'ironwake'], ['r-mini', 'c-mini', 'the post'], ['i-own', 'w-own'], ['i-undo', 'i-bounded']
 ];
