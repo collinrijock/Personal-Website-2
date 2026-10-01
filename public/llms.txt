@@ -2,12 +2,14 @@
 
 > software engineer in miami. lead software engineer at exowatt. i love building software, and i'm getting into building hardware.
 
+the front page is a hero, then one big shared canvas (the sections below as articles, plus the things i've made, ideas and writing, with simulated agent cursors sorting and wiring it up), then a 3d fly-through of the same content that ends in "say hi."
+
 - email: collin@rijock.com
 - x / twitter: https://x.com/CollinRijock
 - github: https://github.com/collinrijock
 - linkedin: https://www.linkedin.com/in/collin-rijock/
 - writing: https://app.collinrijock.com/blog
-- the map (everything on this site as a 3d brainstorm): map.html
+- the map: everything on this site as a 3d brainstorm. the front page flies through it as you scroll (collinrijock.com/#fly), and map.html (collinrijock.com/map) lets you fly it yourself.
 
 ## how i build
 

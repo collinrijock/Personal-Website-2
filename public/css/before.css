@@ -1,29 +1,37 @@
-/* the "before" section: small snippets per earlier job, and the nyse photo. */
+/* "before": the career article on the canvas. a short snippet per earlier job,
+   and the nyse photo as a real image card stuck on the board. */
 
-.before { margin-top: clamp(96px, 12vw, 150px); }
-.before-grid { margin-top: 26px; display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: clamp(24px, 4vw, 56px); align-items: start; }
-
-.stint + .stint { margin-top: 30px; padding-top: 30px; border-top: 1px solid var(--line); }
+.board .art-before .art-body { display: grid; grid-template-columns: minmax(0, 440px) minmax(0, 1fr); gap: 44px; align-items: start; padding: 36px 42px 40px; }
+.board .art-before .lead { margin-bottom: 26px; }
+.board .stints { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 30px 38px; }
 .stint-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; }
-.stint-head h3 { font-size: 20px; line-height: 1.2; font-weight: 600; letter-spacing: -0.02em; }
+.stint-head h3 { font-size: 22px; line-height: 1.2; font-weight: 600; letter-spacing: -0.02em; }
 .stint-head .when { font: 400 12.5px/1 var(--mono); color: var(--ink-3); }
-.stint-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.stint-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 11px; }
 .tag { display: inline-flex; align-items: center; gap: 5px; padding: 4px 9px; border-radius: 999px; font: 500 11.5px/1 var(--mono); color: var(--ink-2); background: color-mix(in srgb, var(--tag, var(--c1)) 12%, var(--bg)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tag, var(--c1)) 30%, transparent); }
-.tag .ico { width: 12px; height: 12px; }
-.stint p { margin-top: 10px; color: var(--ink-2); font-size: 15.5px; line-height: 1.6; max-width: 52ch; }
-.stint p b { color: var(--ink); font-weight: 500; }
-.stint .what { color: var(--ink-3); font-size: 13.5px; margin-top: 2px; }
+.stint p { margin-top: 11px; color: var(--ink-2); font-size: 16px; line-height: 1.6; }
+.stint p b { color: var(--ink); font-weight: 550; }
+.stint .what { color: var(--ink-3); font-size: 14px; line-height: 1.45; margin-top: 4px; }
 
-.photo { position: sticky; top: 24px; }
-.photo figure { margin: 0; border-radius: 18px; overflow: hidden; background: var(--bg); box-shadow: 0 0 0 1px var(--line), 0 30px 70px -36px rgba(24, 10, 70, .35); transform: rotate(1.2deg); transition: transform .5s cubic-bezier(.2, .7, .2, 1); }
-.photo figure:hover { transform: rotate(0deg) scale(1.01); }
-.photo img { display: block; width: 100%; height: auto; aspect-ratio: 16 / 10; object-fit: cover; }
-.photo figcaption { padding: 12px 16px 14px; display: flex; justify-content: space-between; gap: 12px; align-items: baseline; font-size: 13.5px; color: var(--ink-2); }
-.photo figcaption small { font: 400 11.5px/1.3 var(--mono); color: var(--ink-3); white-space: nowrap; }
-.photo-note { margin-top: 12px; font: 400 12px/1.5 var(--mono); color: var(--ink-3); }
+/* the photo: a white card, tilted a little, like it was pinned to the board */
+.board .photo { margin: 6px 0 0; border-radius: 16px; overflow: hidden; background: #fff; box-shadow: 0 0 0 1px rgba(11, 16, 32, .08), 0 2px 4px rgba(20, 24, 40, .06), 0 30px 60px -30px rgba(24, 10, 70, .38); transform: rotate(-1.4deg); transition: transform .5s cubic-bezier(.2, .7, .2, 1); }
+.board .photo:hover { transform: rotate(0deg) scale(1.01); }
+.board .photo img { display: block; width: 100%; height: auto; aspect-ratio: 16 / 10; object-fit: cover; }
+.board .photo figcaption { padding: 14px 18px 4px; display: flex; justify-content: space-between; gap: 14px; align-items: baseline; font-size: 15px; line-height: 1.45; color: var(--ink-2); }
+.board .photo figcaption small { font: 400 12px/1.3 var(--mono); color: var(--ink-3); white-space: nowrap; }
+.board .photo-note { padding: 0 18px 14px; font: 400 12px/1.5 var(--mono); color: var(--ink-3); }
 
-@media (max-width: 860px) {
-  .before-grid { grid-template-columns: 1fr; }
-  .photo { position: static; order: -1; }
-  .photo figure { transform: none; }
+.board.narrow .art-before .art-body { display: block; padding: 24px 22px 28px; }
+.board.narrow .photo { transform: rotate(-1deg); margin: 0 0 28px; }
+.board.narrow .photo figcaption { display: block; font-size: 14.5px; }
+.board.narrow .photo figcaption small { display: block; margin-top: 4px; }
+.board.narrow .stints { grid-template-columns: 1fr; gap: 26px; }
+.board.narrow .stint + .stint { padding-top: 24px; border-top: 1px solid var(--line); }
+
+@media (max-width: 760px) {
+  html:not(.js) .board .art-before .art-body { display: block; }
+  html:not(.js) .board .stints { grid-template-columns: 1fr; }
+  html:not(.js) .board .photo { margin-bottom: 26px; transform: rotate(-1deg); }
+  html:not(.js) .board .photo figcaption { display: block; }
+  html:not(.js) .board .photo figcaption small { display: block; margin-top: 4px; }
 }
