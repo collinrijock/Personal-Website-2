@@ -3,6 +3,10 @@
 // revoked, failed) is another line. the current state of a request is its
 // first line with the later lines folded over it.
 //
+// an "approved" line carries the sections the person can see. scripts/nda.mjs
+// grant / ungrant append another "approved" line with the new full list, so
+// the latest list wins and the history shows every change.
+//
 // writes are one write() call on an O_APPEND fd followed by fsync, so a line
 // lands whole or not at all. anything that reads-then-writes (deciding, so a
 // request can only be decided once) holds a lock file, which scripts/nda.mjs
@@ -12,6 +16,7 @@ import path from "path";
 import { randomBytes } from "crypto";
 import { ndaConfig } from "./config";
 import { NDA_TEXT, NDA_VERSION } from "./nda-text";
+import { isSection, ordered, type SectionId } from "./sections";
 
 export type Status = "pending" | "approved" | "denied" | "revoked" | "failed";
 
@@ -22,6 +27,7 @@ export interface RequestLine {
   email: string;
   company: string;
   reason: string;
+  interests?: SectionId[]; // what they said they're most interested in (optional; collin decides)
   signature: string;
   nda_version: string;
   signed_at: string;
@@ -36,12 +42,23 @@ export interface StatusLine {
   at: string;
   via: string;
   note?: string;
+  sections?: SectionId[]; // on approved lines: everything they can see now
 }
 export interface NdaRequest extends Omit<RequestLine, "t" | "status"> {
   status: Status;
-  history: { status: Status; at: string; via: string; note?: string }[];
+  history: { status: Status; at: string; via: string; note?: string; sections?: SectionId[] }[];
   decided_at?: string;
+  sections?: SectionId[]; // the latest grant, if there has been one
 }
+
+// what an approved person can see. an approval from before sections existed
+// carries no list; it saw projects.md, which is now "personal".
+export function grantedSections(r: NdaRequest): SectionId[] {
+  if (r.status !== "approved") return [];
+  return r.sections ? r.sections : ["personal"];
+}
+
+const sectionsOf = (v: unknown): SectionId[] | undefined => (Array.isArray(v) ? ordered(v.filter(isSection)) : undefined);
 
 const dir = () => ndaConfig().dataDir;
 const logPath = () => path.join(dir(), "requests.jsonl");
@@ -90,11 +107,13 @@ export function readAll(): Map<string, NdaRequest> {
     }
     if (o.t === "request" && typeof o.id === "string" && !out.has(o.id)) {
       const { t, ...rest } = o as RequestLine;
-      out.set(o.id, { ...rest, status: "pending", history: [{ status: "pending", at: o.signed_at, via: "request" }] });
+      out.set(o.id, { ...rest, interests: sectionsOf(rest.interests) || [], status: "pending", history: [{ status: "pending", at: o.signed_at, via: "request" }] });
     } else if (o.t === "status" && out.has(o.id)) {
       const r = out.get(o.id)!;
       r.status = o.status;
-      r.history.push({ status: o.status, at: o.at, via: o.via, note: o.note });
+      const sections = sectionsOf(o.sections);
+      if (sections) r.sections = sections;
+      r.history.push({ status: o.status, at: o.at, via: o.via, note: o.note, ...(sections ? { sections } : {}) });
       if (o.status === "approved" || o.status === "denied") r.decided_at = r.decided_at || o.at;
     }
   }
@@ -138,8 +157,8 @@ export function addRequest(r: Omit<RequestLine, "t" | "id" | "status" | "nda_ver
   return line;
 }
 
-export function addStatus(id: string, status: Status, via: string, note?: string): StatusLine {
-  const line: StatusLine = { t: "status", id, status, at: new Date().toISOString(), via, ...(note ? { note } : {}) };
+export function addStatus(id: string, status: Status, via: string, note?: string, sections?: SectionId[]): StatusLine {
+  const line: StatusLine = { t: "status", id, status, at: new Date().toISOString(), via, ...(note ? { note } : {}), ...(sections ? { sections: ordered(sections) } : {}) };
   appendLine(line);
   return line;
 }

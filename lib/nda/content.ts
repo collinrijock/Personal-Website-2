@@ -1,10 +1,16 @@
-// the sensitive content itself: NDA_DATA_DIR/projects.md (preferred) or
-// projects.json. it lives on the server only, never in git or public/, and is
-// read on each request so collin can edit it without a deploy.
+// the sensitive content itself, one markdown file per section:
+// NDA_DATA_DIR/sections/<id>.md (exowatt, grunts, personal, previous). it lives
+// on the server only, never in git or public/, and is read on each request so
+// collin can edit it without a deploy.
+//
+// only the sections a person was granted are ever read. the older single file,
+// NDA_DATA_DIR/projects.md (or projects.json), still works: while there are no
+// section files at all, it is the "personal" section.
 import fs from "fs";
 import path from "path";
 import { ndaConfig } from "./config";
 import { renderProjects, type Rendered } from "./markdown";
+import { ordered, SECTION_IDS, sectionLabel, type SectionId } from "./sections";
 
 interface JsonProject {
   title: string;
@@ -14,7 +20,29 @@ interface JsonProject {
   links?: { label: string; href: string }[];
 }
 
-export function loadProjects(): Rendered | null {
+export interface LoadedSection {
+  id: SectionId;
+  label: string;
+  content: Rendered | null; // null: the file isn't there yet
+}
+
+const sectionFile = (id: SectionId) => path.join(ndaConfig().dataDir, "sections", `${id}.md`);
+
+// the granted sections, in page order, each with its content (or null)
+export function loadSections(granted: readonly SectionId[]): LoadedSection[] {
+  const legacy = !SECTION_IDS.some((id) => fs.existsSync(sectionFile(id)));
+  return ordered(granted).map((id) => {
+    let content: Rendered | null = null;
+    const md = read(sectionFile(id));
+    if (md != null) content = renderProjects(md);
+    else if (legacy && id === "personal") content = loadLegacy();
+    if (content && !content.projects.length && !content.intro.trim()) content = null;
+    return { id, label: sectionLabel(id), content };
+  });
+}
+
+// projects.md (preferred) or projects.json, from before sections
+function loadLegacy(): Rendered | null {
   const dir = ndaConfig().dataDir;
   const md = read(path.join(dir, "projects.md"));
   if (md != null) return renderProjects(md);

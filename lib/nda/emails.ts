@@ -3,6 +3,7 @@
 // text version. every value that came from a person is escaped.
 import { esc } from "./http";
 import { NDA_TEXT } from "./nda-text";
+import { sectionLabel, sectionList, type SectionId } from "./sections";
 import type { NdaRequest, RequestLine } from "./store";
 
 const FONT = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif";
@@ -42,6 +43,17 @@ function button(href: string, label: string, bg: string, fg: string, border = bg
 </td></tr></table>`;
 }
 
+// the smaller pill for the row of approve presets
+function pill(href: string, label: string, primary: boolean): string {
+  const bg = primary ? "#0b1020" : "#ffffff", fg = primary ? "#ffffff" : INK, border = primary ? "#0b1020" : "#cfd4e0";
+  return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="display:inline-table;margin:0 8px 8px 0;"><tr>
+<td align="center" bgcolor="${bg}" style="border-radius:999px;border:1.5px solid ${border};">
+<a href="${esc(href)}" target="_blank" style="display:inline-block;padding:11px 18px;font-family:${FONT};font-size:15px;font-weight:600;line-height:1;color:${fg};text-decoration:none;border-radius:999px;white-space:nowrap;">${esc(label)}</a>
+</td></tr></table>`;
+}
+
+const interestText = (ids: SectionId[] | undefined) => (ids && ids.length ? ids.map(sectionLabel).join(", ") : "");
+
 function rows(pairs: [string, string][]): string {
   return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:18px 0 22px;border-top:1px solid ${LINE};">
 ${pairs
@@ -66,18 +78,27 @@ ${paras}
 const agreementText = (r: Pick<RequestLine, "signature" | "signed_at" | "nda_version" | "email">) =>
   `${NDA_TEXT}\n\n---\nsigned: ${r.signature} <${r.email}>\non: ${when(r.signed_at)}\nversion: ${r.nda_version}`;
 
-export function ownerRequestEmail(r: RequestLine, approveUrl: string, denyUrl: string, expires: number, notifyDenied: boolean) {
+export interface ApproveLink {
+  key: string;
+  label: string;
+  sections: SectionId[];
+  url: string;
+}
+
+export function ownerRequestEmail(r: RequestLine, approves: ApproveLink[], denyUrl: string, expires: number, notifyDenied: boolean) {
+  const interests = interestText(r.interests);
   const subject = `nda request: ${r.name}${r.company ? ` · ${r.company}` : ""}`;
   const html = layout(
     subject,
     `${r.name} signed the nda and wants to see your private projects.`,
     `<h1 style="margin:0 0 6px;font-size:24px;line-height:1.2;font-weight:650;letter-spacing:-0.02em;">${esc(r.name)} wants to see your nda projects</h1>
-<p style="margin:0;font-size:15px;line-height:1.55;color:${INK2};">they signed the agreement below. approve and they get a private link for 90 days. deny and ${notifyDenied ? "they get a short, polite note" : "they hear nothing"}.</p>
+<p style="margin:0;font-size:15px;line-height:1.55;color:${INK2};">they signed the agreement below. approve and they get a private link for 90 days to the sections you pick. deny and ${notifyDenied ? "they get a short, polite note" : "they hear nothing"}.</p>
 ${rows([
   ["name", esc(r.name)],
   ["email", `<a href="mailto:${esc(r.email)}" style="color:${INK};">${esc(r.email)}</a>`],
   ["company", r.company ? esc(r.company) : `<span style="color:${INK3};">none given</span>`],
   ["wants to see", esc(r.reason)],
+  ["most interested in", interests ? esc(interests) : `<span style="color:${INK3};">didn't say</span>`],
   ["signed as", esc(r.signature)],
   ["signed at", esc(when(r.signed_at))],
   ["nda version", `<span style="font-family:${MONO};font-size:13px;">${esc(r.nda_version)}</span>`],
@@ -85,7 +106,10 @@ ${rows([
   ["browser", `<span style="font-size:13px;color:${INK2};">${esc(r.user_agent)}</span>`],
   ["request id", `<span style="font-family:${MONO};font-size:13px;">${esc(r.id)}</span>`],
 ])}
-<div style="margin:0 0 6px;">${button(approveUrl, "Approve", "#0b1020", "#ffffff")}${button(denyUrl, "Deny", "#ffffff", "#b4233c", "#f2c4cd")}</div>
+<p style="margin:0 0 10px;font-family:${MONO};font-size:12px;color:${INK3};">approve, and let them see</p>
+<div style="margin:0 0 4px;">${approves.map((a, i) => pill(a.url, a.label, i === 0)).join("")}</div>
+<p style="margin:0 0 20px;font-size:13px;line-height:1.5;color:${INK3};">"choose…" starts with ${interests ? `what they asked for (${esc(interests)})` : "nothing ticked"}. on every one you can still change the sections before you confirm.</p>
+<div style="margin:0 0 6px;">${button(denyUrl, "Deny", "#ffffff", "#b4233c", "#f2c4cd")}</div>
 <p style="margin:0 0 26px;font-size:13px;line-height:1.5;color:${INK3};">each button opens a page where you confirm. nothing happens until you press confirm there, so link scanners can't decide for you. the links work until ${esc(day(expires))}.</p>
 <p style="margin:0 0 8px;font-family:${MONO};font-size:12px;color:${INK3};">what they signed</p>
 ${agreementBox(r)}`
@@ -96,6 +120,7 @@ name: ${r.name}
 email: ${r.email}
 company: ${r.company || "none given"}
 wants to see: ${r.reason}
+most interested in: ${interests || "didn't say"}
 signed as: ${r.signature}
 signed at: ${when(r.signed_at)}
 nda version: ${r.nda_version}
@@ -103,7 +128,9 @@ ip: ${r.ip}
 browser: ${r.user_agent}
 request id: ${r.id}
 
-approve: ${approveUrl}
+approve, and let them see:
+${approves.map((a) => `  ${a.label}: ${a.url}`).join("\n")}
+
 deny: ${denyUrl}
 
 each link opens a confirm page; nothing happens until you confirm. the links work until ${day(expires)}.
@@ -115,13 +142,16 @@ ${agreementText(r)}
   return { subject, html, text };
 }
 
-export function approvedEmail(r: NdaRequest, accessUrl: string, expires: number) {
+export function approvedEmail(r: NdaRequest, sections: SectionId[], accessUrl: string, expires: number) {
   const subject = "your access to collin rijock's nda projects";
+  const what = sectionList(sections);
+  const listHtml = `<ul style="margin:0 0 22px;padding:0 0 0 20px;font-size:15px;line-height:1.7;color:${INK};">${sections.map((id) => `<li>${esc(sectionLabel(id))}</li>`).join("")}</ul>`;
   const html = layout(
     subject,
     "collin approved your request. here's your private link.",
     `<h1 style="margin:0 0 10px;font-size:24px;line-height:1.2;font-weight:650;letter-spacing:-0.02em;">you're in, ${esc(first(r.name))}.</h1>
-<p style="margin:0 0 22px;font-size:15px;line-height:1.6;color:${INK2};">i approved your request to see the personal projects i keep under nda. this link is just for you. it works until ${esc(day(expires))}.</p>
+<p style="margin:0 0 12px;font-size:15px;line-height:1.6;color:${INK2};">i approved your request to see some of the work i keep under nda. this link is just for you. it works until ${esc(day(expires))}. it opens:</p>
+${listHtml}
 <div style="margin:0 0 14px;">${button(accessUrl, "open the projects", "#0b1020", "#ffffff")}</div>
 <p style="margin:0 0 26px;font-size:13px;line-height:1.55;color:${INK3};">please don't forward it: what's behind it is covered by the agreement you signed, a copy of which is below. if the button doesn't work, paste this into your browser:<br><span style="font-family:${MONO};font-size:12px;word-break:break-all;color:${INK2};">${esc(accessUrl)}</span></p>
 <p style="margin:0 0 28px;font-size:15px;line-height:1.6;color:${INK2};">thanks for the interest. reply to this email if you want to talk about any of it.<br>collin</p>
@@ -130,7 +160,7 @@ ${agreementBox(r)}`
   );
   const text = `you're in, ${first(r.name)}.
 
-i approved your request to see the personal projects i keep under nda. this link is just for you, and works until ${day(expires)}:
+i approved your request to see some of the work i keep under nda: ${what}. this link is just for you, and works until ${day(expires)}:
 
 ${accessUrl}
 
@@ -153,12 +183,12 @@ export function deniedEmail(r: NdaRequest) {
     subject,
     "thanks for asking.",
     `<h1 style="margin:0 0 10px;font-size:24px;line-height:1.2;font-weight:650;letter-spacing:-0.02em;">thanks for asking, ${esc(first(r.name))}.</h1>
-<p style="margin:0 0 12px;font-size:15px;line-height:1.6;color:${INK2};">i can't share the personal projects i keep under nda with you right now. it's nothing personal, and i appreciate the interest.</p>
+<p style="margin:0 0 12px;font-size:15px;line-height:1.6;color:${INK2};">i can't share the work i keep under nda with you right now. it's nothing personal, and i appreciate the interest.</p>
 <p style="margin:0 0 6px;font-size:15px;line-height:1.6;color:${INK2};">the rest of what i've built is on the site, and you're welcome to reply here.<br>collin</p>`
   );
   const text = `thanks for asking, ${first(r.name)}.
 
-i can't share the personal projects i keep under nda with you right now. it's nothing personal, and i appreciate the interest.
+i can't share the work i keep under nda with you right now. it's nothing personal, and i appreciate the interest.
 
 the rest of what i've built is on the site, and you're welcome to reply here.
 collin

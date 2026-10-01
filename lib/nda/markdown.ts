@@ -1,10 +1,11 @@
-// a deliberately small markdown renderer for NDA_DATA_DIR/projects.md.
+// a deliberately small markdown renderer for the section files (NDA_DATA_DIR/sections/<id>.md).
 // it escapes everything first, then adds back a short list of constructs:
 // # / ## / ### headings, paragraphs, - and 1. lists, > quotes, --- rules,
 // **bold**, *italic*, `code`, and [links](https://...) (http, https, mailto
 // and same-site paths only). no raw html gets through.
 //
-// each "## " heading starts a new project card.
+// each "## " heading starts a new project card. on /nda the section is an h2
+// and each card an h3, so headings inside a card start at h3.
 import { esc } from "./http";
 
 function inline(s: string): string {
@@ -38,7 +39,7 @@ function blocks(md: string): string {
     const t = line.trim();
     let m: RegExpExecArray | null;
     if (!t) { flush(); continue; }
-    if ((m = /^(#{1,4})\s+(.*)$/.exec(t))) { flush(); const n = Math.min(4, m[1].length + 1); out.push(`<h${n}>${inline(m[2])}</h${n}>`); continue; }
+    if ((m = /^(#{1,4})\s+(.*)$/.exec(t))) { flush(); const n = Math.min(6, m[1].length + 2); out.push(`<h${n}>${inline(m[2])}</h${n}>`); continue; }
     if (/^(-{3,}|\*{3,})$/.test(t)) { flush(); out.push("<hr>"); continue; }
     if ((m = /^[-*]\s+(.*)$/.exec(t))) { if (para.length || quote.length || (list && list.tag !== "ul")) flush(); list = list || { tag: "ul", items: [] }; list.items.push(m[1]); continue; }
     if ((m = /^\d+[.)]\s+(.*)$/.exec(t))) { if (para.length || quote.length || (list && list.tag !== "ol")) flush(); list = list || { tag: "ol", items: [] }; list.items.push(m[1]); continue; }

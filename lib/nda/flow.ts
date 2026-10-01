@@ -6,7 +6,8 @@ import { approvedEmail, deniedEmail, ownerRequestEmail } from "./emails";
 import { clean, clientIp, EMAIL_RE, readCookie, sameName } from "./http";
 import { sendMail } from "./mail";
 import { NDA_VERSION } from "./nda-text";
-import { addRequest, addStatus, getRequest, openRequestFor, withLock, type NdaRequest } from "./store";
+import { parseSections, SECTION_IDS, type SectionId } from "./sections";
+import { addRequest, addStatus, getRequest, grantedSections, openRequestFor, withLock, type NdaRequest } from "./store";
 import { signToken, verifyToken, type Action } from "./token";
 
 export const LIMITS = { name: 120, email: 254, company: 120, reason: 800, signature: 120 };
@@ -17,8 +18,25 @@ export class Refusal extends Error {
   }
 }
 
-export function decideUrl(id: string, a: Action, exp: number) {
-  return `${ndaConfig().siteUrl}/nda/decide?token=${encodeURIComponent(signToken({ p: "decide", r: id, a, e: exp }))}`;
+export function decideToken(id: string, a: Action, exp: number, s?: SectionId[]) {
+  return signToken({ p: "decide", r: id, a, e: exp, ...(a === "approve" && s ? { s } : {}) });
+}
+export function decideUrl(id: string, a: Action, exp: number, s?: SectionId[]) {
+  return `${ndaConfig().siteUrl}/nda/decide?token=${encodeURIComponent(decideToken(id, a, exp, s))}`;
+}
+
+// the approve links in collin's email. each opens the decide page with these
+// sections ticked; he can still change them there before confirming. "choose…"
+// starts from what the person said they're most interested in.
+export function approvePresets(interests: SectionId[]): { key: string; label: string; sections: SectionId[] }[] {
+  return [
+    { key: "all", label: "approve all", sections: [...SECTION_IDS] },
+    { key: "exowatt", label: "exowatt only", sections: ["exowatt"] },
+    { key: "grunts", label: "grunts only", sections: ["grunts"] },
+    { key: "personal", label: "personal only", sections: ["personal"] },
+    { key: "previous", label: "previous employers only", sections: ["previous"] },
+    { key: "choose", label: "choose…", sections: interests },
+  ];
 }
 export function accessUrl(id: string) {
   const exp = Date.now() + ACCESS_TTL;
@@ -33,6 +51,7 @@ export interface RequestInput {
   signature?: unknown;
   agree?: unknown;
   nda_version?: unknown;
+  interests?: unknown;
 }
 
 export function validate(body: RequestInput) {
@@ -47,8 +66,10 @@ export function validate(body: RequestInput) {
   if (!signature) throw new Refusal(400, "type your full name to sign.");
   if (!sameName(signature, name)) throw new Refusal(400, "the signature has to match your full name.");
   if (body.agree !== true && body.agree !== "on" && body.agree !== "true") throw new Refusal(400, "check \"i agree\" to sign.");
+  const interests = parseSections(body.interests);
+  if (!interests) throw new Refusal(400, "pick your interests from the list.");
   if (body.nda_version !== NDA_VERSION) throw new Refusal(409, "the agreement was just updated. please reload the page and read it again.");
-  return { name, email, company, reason, signature };
+  return { name, email, company, reason, interests, signature };
 }
 
 export async function submitRequest(req: IncomingMessage, body: RequestInput) {
@@ -59,7 +80,8 @@ export async function submitRequest(req: IncomingMessage, body: RequestInput) {
     return addRequest({ ...fields, ip: clientIp(req), user_agent: clean(req.headers["user-agent"], 300) });
   });
   const exp = Date.now() + DECIDE_TTL;
-  const mail = ownerRequestEmail(line, decideUrl(line.id, "approve", exp), decideUrl(line.id, "deny", exp), exp, c.notifyDenied);
+  const approves = approvePresets(line.interests || []).map((p) => ({ ...p, url: decideUrl(line.id, "approve", exp, p.sections) }));
+  const mail = ownerRequestEmail(line, approves, decideUrl(line.id, "deny", exp), exp, c.notifyDenied);
   try {
     await sendMail({ to: c.ownerEmail, replyTo: line.email, kind: "owner-request", ref: line.id, ...mail });
   } catch (err) {
@@ -75,7 +97,7 @@ export type DecideView =
   | { state: "invalid" }
   | { state: "expired" }
   | { state: "missing" }
-  | { state: "ready" | "done"; action: Action; request: NdaRequest };
+  | { state: "ready" | "done"; action: Action; request: NdaRequest; preset: SectionId[]; denyToken: string | null };
 
 // what the decide page shows for a token (it never changes anything)
 export function viewDecision(token: unknown): DecideView {
@@ -83,11 +105,23 @@ export function viewDecision(token: unknown): DecideView {
   if (!v.ok) return { state: v.reason };
   const r = getRequest(v.payload.r);
   if (!r) return { state: "missing" };
-  return { state: r.status === "pending" ? "ready" : "done", action: v.payload.a!, request: r };
+  const a = v.payload.a!;
+  return {
+    state: r.status === "pending" ? "ready" : "done",
+    action: a,
+    request: r,
+    // a token from before sections starts from what they asked for
+    preset: a === "approve" ? v.payload.s || r.interests || [] : [],
+    // the approve page has its own deny button: a deny token for the same request, same expiry
+    denyToken: a === "approve" ? decideToken(r.id, "deny", v.payload.e) : null,
+  };
 }
 
-// the one place a request gets approved or denied from the email links
-export async function decide(token: unknown) {
+// the one place a request gets approved or denied from the email links.
+// an approval needs the sections collin ticked: one or more of the four ids.
+// the list comes from the post, not the token (the token only says which were
+// ticked to begin with), and anything outside the four is refused.
+export async function decide(token: unknown, rawSections?: unknown) {
   const v = verifyToken(token, "decide");
   if (!v.ok) throw new Refusal(v.reason === "expired" ? 410 : 400, v.reason === "expired" ? "this link has expired." : "this link isn't valid.");
   const { r: id, a } = v.payload;
@@ -96,15 +130,22 @@ export async function decide(token: unknown) {
     const cur = getRequest(id);
     if (!cur) throw new Refusal(404, "that request doesn't exist.");
     if (cur.status !== "pending") throw new Refusal(409, `this request was already ${cur.status}.`);
-    addStatus(id, status, "email");
-    return { ...cur, status } as NdaRequest;
+    let sections: SectionId[] | undefined;
+    if (status === "approved") {
+      const s = parseSections(rawSections);
+      if (!s) throw new Refusal(400, "those aren't sections i know.");
+      if (!s.length) throw new Refusal(422, "pick at least one section to approve.");
+      sections = s;
+    }
+    addStatus(id, status, "email", undefined, sections);
+    return { ...cur, status, ...(sections ? { sections } : {}) } as NdaRequest;
   });
   const c = ndaConfig();
   let mailed = true;
   try {
     if (status === "approved") {
       const { url, exp } = accessUrl(id);
-      await sendMail({ to: r.email, replyTo: c.ownerEmail, kind: "approved", ref: id, ...approvedEmail(r, url, exp) });
+      await sendMail({ to: r.email, replyTo: c.ownerEmail, kind: "approved", ref: id, ...approvedEmail(r, grantedSections(r), url, exp) });
     } else if (c.notifyDenied) {
       await sendMail({ to: r.email, replyTo: c.ownerEmail, kind: "denied", ref: id, ...deniedEmail(r) });
     }
@@ -113,7 +154,7 @@ export async function decide(token: unknown) {
     console.error(`nda: ${status} mail failed for ${id}:`, (err as Error).message);
   }
   console.log(`nda: request ${id} ${status}`);
-  return { id, status, mailed };
+  return { id, status, mailed, sections: r.sections || [] };
 }
 
 // a valid cookie for a request that is still approved, or null

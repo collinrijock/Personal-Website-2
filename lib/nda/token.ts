@@ -3,6 +3,7 @@
 // token minted for one job can't be replayed as another.
 import { createHmac, timingSafeEqual } from "crypto";
 import { ndaConfig } from "./config";
+import { isSection, type SectionId } from "./sections";
 
 export type Purpose = "decide" | "access" | "cookie";
 export type Action = "approve" | "deny";
@@ -10,6 +11,7 @@ export interface TokenPayload {
   p: Purpose;
   r: string; // request id
   a?: Action; // decide tokens only
+  s?: SectionId[]; // approve tokens only: the sections the page starts with ticked
   e: number; // expiry, ms since epoch
 }
 
@@ -44,6 +46,7 @@ export function verifyToken(token: unknown, purpose: Purpose, secret = ndaConfig
     return { ok: false, reason: "invalid" };
   }
   if (purpose === "decide" && payload.a !== "approve" && payload.a !== "deny") return { ok: false, reason: "invalid" };
+  if (payload.s !== undefined && (!Array.isArray(payload.s) || payload.s.length > 4 || !payload.s.every(isSection))) return { ok: false, reason: "invalid" };
   if (Date.now() > payload.e) return { ok: false, reason: "expired" };
   return { ok: true, payload };
 }
