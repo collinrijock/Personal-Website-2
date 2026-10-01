@@ -1,8 +1,7 @@
 # under nda
 
 <!--
-  a placeholder. personal projects and side work only: nothing from an
-  employer (exowatt's confidential work stays inside exowatt). the real file is NDA_DATA_DIR/projects.md on the server
+  a placeholder: exowatt work and personal projects. the real file is NDA_DATA_DIR/projects.md on the server
   (default ~/srv/personal-website/shared/nda/projects.md). it is never in git
   or public/. /nda reads it on every request, so edits show up without a deploy.
 

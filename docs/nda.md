@@ -1,6 +1,6 @@
 # the nda gate
 
-Some of Collin's personal projects and side work on collinrijock.com are shared only with people who sign a short NDA and whom he approves by hand. The gate is for his own work only. Exowatt's confidential work never goes here: it stays inside Exowatt, and the agreement says so. This doc covers how the gate works, what to set on the server, and how to run it day to day.
+Some of Collin's work on collinrijock.com, from Exowatt and his own projects, is shared only with people who sign a short NDA and whom he approves by hand. Collin decided (2026-10-01) to include employer work here; what goes in `projects.md` is his call. This doc covers how the gate works, what to set on the server, and how to run it day to day.
 
 ## the flow
 

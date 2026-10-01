@@ -114,7 +114,7 @@ for (const f of FRAMES) {
 function lockedFrame(f) {
   const ghost = (color, kind, bars) => `<div class="ghost ${kind}" data-color="${color}"><span class="glk">${LOCK}</span>${bars.map((w) => `<i style="width:${w}%"></i>`).join('')}</div>`;
   return `<div class="ft"><span class="nda-t">${LOCK}${f.title}</span>
-    <span class="nda-p">personal projects and side work that aren't public yet. sign a short nda and i'll share them.</span>
+    <span class="nda-p">work that isn't public yet, from exowatt and my own projects. sign a short nda and i'll share it.</span>
     <button type="button" class="nda-act" data-nda-open>${LOCK}<span class="lbl">request access</span><span class="ar" aria-hidden="true">→</span></button>
     <b class="count">locked</b></div>
   <div class="nda-in" aria-hidden="true">

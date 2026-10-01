@@ -69,7 +69,7 @@ export default function Nda(p: Props) {
           </div>
           {p.why && <p className="nda-why">{WHY[p.why]}</p>}
           <h1>this part is under nda.</h1>
-          <p>some of my personal projects and side work aren&apos;t public yet. sign a short nda, and if i approve it you&apos;ll get a private link to them by email.</p>
+          <p>some of my work isn&apos;t public yet, from exowatt and my own projects. sign a short nda, and if i approve it you&apos;ll get a private link to them by email.</p>
           <p className="nda-actions">
             <Link className="nda-btn" href="/#request-access">
               <Lock size={16} />
@@ -90,7 +90,7 @@ export default function Nda(p: Props) {
           <Lock size={14} />
           shared under nda with {p.name}
         </p>
-        <h1>side projects, under nda.</h1>
+        <h1>my work, under nda.</h1>
         {p.intro ? <div className="nda-intro nda-prose" dangerouslySetInnerHTML={{ __html: p.intro }} /> : null}
       </header>
       {p.empty ? (
