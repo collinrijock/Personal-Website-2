@@ -21,6 +21,7 @@
     "framer-motion": "^10.12.2",
     "gsap": "^3.13.0",
     "next": "13.3.0",
+    "nodemailer": "^7.0.13",
     "p5": "^1.6.0",
     "postcss": "8.4.21",
     "react": "18.2.0",
@@ -35,6 +36,7 @@
     "typescript": "5.0.4"
   },
   "devDependencies": {
+    "@types/nodemailer": "^8.0.2",
     "glslify-loader": "^2.0.0",
     "raw-loader": "^4.0.2"
   }
