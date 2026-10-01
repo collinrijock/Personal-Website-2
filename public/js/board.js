@@ -1,9 +1,12 @@
 // board.js — the canvas section: this site's own copy on a figjam-style board
 // (the gruntworks canvas vocabulary: frames, pastel stickies, cards, arrows,
-// reactions), with four simulated agent cursors working on it. they sort the
+// reactions), with three simulated agent cursors working on it. they sort the
 // inbox into frames, type new stickies, draw arrows between related ideas,
 // react, tidy up after you, and occasionally rethink something. you can grab
-// cards too (mouse), pan the board and zoom (ctrl/cmd + wheel, or the buttons).
+// cards too (mouse), and move around: wheel / two-finger scroll pans, pinch or
+// ctrl/cmd + wheel zooms, drag the background (with a flick), two-finger touch,
+// an "explore" mode for one-finger touch, the minimap, and the keyboard.
+// it opens at a reading zoom on the top row; "fit" shows everything.
 //
 // everything runs on one clock that only ticks while the board is on screen
 // and the tab is visible, so the agents pause mid-gesture when you look away.
@@ -22,25 +25,28 @@ const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 const ease = (u) => (u < 0.5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2);
 
 // ── the board ───────────────────────────────────────────────────────────
-// the things i've made are the top row, the context sits under them, the inbox runs down the side.
-const CELL = 212, CW = 196, HEAD = 42, GAP = 12, M = 26, SEP = 28;
-const H1 = 512, H2 = 288, ROW2 = H1 + SEP;
+// the things i've made are the top row, the context sits under them, ideas and writing
+// fill the bottom row, and the inbox runs down the side.
+const CELL = 212, CW = 196, HEAD = 48, GAP = 12, M = 26, SEP = 28;
+const H1 = 560, H2 = 400, H3 = 620, ROW2 = H1 + SEP, ROW3 = ROW2 + H2 + SEP;
 const FRAMES = [
   { id: 'xmade', title: "things i've made · at exowatt", color: 'blue', x: 0, y: 0, cols: 3, w: 674, h: H1 },
   { id: 'own', title: "things i've made · on my own time", color: 'pink', x: 702, y: 0, cols: 3, w: 674, h: H1 },
   { id: 'exowatt', title: 'exowatt · now', color: 'blue', x: 0, y: ROW2, cols: 2, h: H2 },
-  { id: 'vision', title: "where i'm headed", color: 'yellow', x: 468, y: ROW2, cols: 2, h: H2 },
+  { id: 'vision', title: 'how i build', color: 'yellow', x: 468, y: ROW2, cols: 2, h: H2 },
   { id: 'charles', title: 'super charles', color: 'purple', x: 936, y: ROW2, cols: 2, h: H2 },
   { id: 'inbox', title: 'inbox', color: 'gray', x: 1404, y: 0, cols: 1, h: ROW2 + H2, inbox: true },
+  { id: 'ideas', title: 'ideas i keep coming back to', color: 'green', x: 0, y: ROW3, cols: 5, w: 1148, h: H3 },
+  { id: 'writing', title: 'writing', color: 'gray', x: 1176, y: ROW3, cols: 2, w: 456, h: H3 },
 ].map((f) => {
   const w = f.w || 32 + (f.cols - 1) * CELL + CW;
   // columns spread to fill wider frames, with the same 16px inset as the rest
   return { ...f, x: f.x + M, y: f.y + M, w, cell: f.cols > 1 ? (w - 32 - CW) / (f.cols - 1) : CELL, cards: [] };
 });
-const WORLD = { w: 1404 + 32 + CW + M * 2, h: ROW2 + H2 + M * 2 };
+const WORLD = { w: 1404 + 32 + CW + M * 2, h: ROW3 + H3 + M * 2 };
 const frameOf = Object.fromEntries(FRAMES.map((f) => [f.id, f]));
 // cluster -> frame, plus a few cards that live somewhere other than their cluster's frame
-const HOME = { vision: 'vision', me: 'vision', work: 'vision', exowatt: 'exowatt', xmade: 'xmade', charles: 'charles', things: 'own', games: 'own', stack: 'xmade' };
+const HOME = { vision: 'vision', me: 'vision', work: 'vision', exowatt: 'exowatt', xmade: 'xmade', charles: 'charles', things: 'own', games: 'own', stack: 'xmade', ideas: 'ideas', writing: 'writing' };
 const PIN = { 'c-link': 'own', 'l-three': 'xmade' };
 const homeOf = (id) => frameOf[PIN[id] || HOME[byId[id].cluster]];
 
@@ -51,9 +57,12 @@ const START = {
   vision: ['v-future', 'v-cheap'],
   charles: ['c-db', 'c-what'],
   inbox: ['x-twins', 't-pokemon', 'v-already', 'x-patents', 't-carecart', 'c-mini'],
+  ideas: ['i-build', 'i-breadth', 'i-own', 'i-loop', 'i-bounded', 'i-files', 'i-dead', 'i-undo', 'i-quiet', 'i-typed', 'i-protocols',
+    'i-loud', 'i-algo', 'i-decade', 'i-data', 'i-operator', 'i-tenyear', 'i-friends', 'i-founders', 'i-block', 'i-kobe'],
+  writing: ['r-dems', 'r-breadth', 'r-founders', 'r-china', 'r-mini'],
 };
 // notes the agents can write from scratch, typed out a letter at a time (the first three are in the still life)
-const POOL = ['x-browser', 'x-sim', 'x-teammates', 'v-touch', 'c-chief', 'x-interns', 'c-know', 'w-proof', 'v-going', 'w-breadth'];
+const POOL = ['x-browser', 'x-sim', 'x-teammates', 'v-touch', 'c-chief', 'i-kb', 'r-data', 'x-interns', 'c-know', 'w-proof', 'v-going', 'w-breadth', 'i-cli', 'i-colossus'];
 // the things i've made: written first, never erased
 const KEEP = new Set(['x-platform', 'x-ems', 'x-patents', 'x-twins', 'x-ade', 'x-browser', 'c-link', 't-skills', 't-voice', 't-deck', 'g-lotfg', 't-pokemon', 't-carecart']);
 // arrows worth drawing, when both ends are on the board (the first five are in the still life)
@@ -63,6 +72,9 @@ const LINKS = [
   ['x-teammates', 'c-chief', 'same idea, at home'], ['c-mini', 'c-link', 'runs on'],
   ['c-db', 'c-what'], ['v-cheap', 'v-future'], ['v-touch', 'x-p3'], ['x-sim', 'x-teammates'], ['t-deck', 'x-ade'],
   ['t-carecart', 't-pokemon', 'also 2020'], ['w-breadth', 'v-future'],
+  ['i-breadth', 'r-breadth', 'wrote about it'], ['i-founders', 'r-founders'], ['r-mini', 'c-mini', 'the post'],
+  ['i-files', 'c-db'], ['i-bounded', 'c-chief', 'the contract'], ['i-undo', 'i-bounded'], ['i-loop', 'i-typed'],
+  ['i-protocols', 'i-algo'], ['i-own', 'x-platform', 'end to end'], ['i-quiet', 't-deck'],
 ];
 const EMOJI = ['🔥', '⚡', '✨', '👀', '🙌', '💡'];
 const SAY = {
@@ -109,7 +121,12 @@ ui.innerHTML = `
     <button type="button" data-z="+" aria-label="zoom in">+</button>
     <button type="button" data-z="fit" aria-label="fit the board">fit</button>
   </div>
-  <p class="sim"><i></i>simulated agents</p>`;
+  <div class="minimap" aria-hidden="true" title="drag to move around the board"><div class="mv"></div></div>
+  <div class="dock">
+    <p class="sim"><i></i>simulated agents</p>
+    <button type="button" class="mode follow" aria-pressed="false"><i></i>follow agents</button>
+    <button type="button" class="mode explore" aria-pressed="false" title="one-finger drag moves the board, tap again to scroll the page"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18M3 12h18M12 3l-3 3M12 3l3 3M12 21l-3-3M12 21l3-3M3 12l3-3M3 12l3 3M21 12l-3-3M21 12l-3 3"/></svg>explore</button>
+  </div>`;
 board.append(ui);
 world.append(cursorLayer);
 const toolEl = Object.fromEntries([...ui.querySelectorAll('.tool')].map((t) => [t.dataset.tool, t]));
@@ -228,11 +245,11 @@ function updateEdges() {
 }
 
 // ── agents ──────────────────────────────────────────────────────────────
-const AGENTS = [0, 1, 2, 3].map((i) => {
+const AGENTS = [0, 1, 2].map((i) => {
   const seed = `canvas:agent:${i + 1}`;
   const look = rollLook(seed);
   const name = rollName(seed).split(' ')[0].toLowerCase();
-  const color = `var(--c${[0, 2, 1, 3][i]})`;
+  const color = `var(--c${[0, 2, 1][i]})`;
   const eng = createMascotEngine(look, { initialState: 'happy' });
   const face = renderFrameToSvg(eng.sample(eng.restPoseTime()), look, 18, { idPrefix: `cf${i}` });
   const e = el('div', 'cur');
@@ -525,37 +542,114 @@ async function life(a) {
 }
 
 // ── the view ────────────────────────────────────────────────────────────
-const view = { x: 0, y: 0, z: 1, tx: 0, ty: 0, tz: 1, follow: false, user: false };
+// view.{x,y,z} is what's shown, view.{tx,ty,tz} where it's heading; x/y/z ease
+// toward the targets at view.rate. direct manipulation (drags, trackpad
+// scrolls, pinches) moves both at once, so it tracks the fingers 1:1.
+// mode: 'home' (the reading view), 'fit' (everything), 'user' (you moved it).
+const PAD = 40; // how far past the world's edge you can pan, in screen px
+const view = { x: 0, y: 0, z: 1, tx: 0, ty: 0, tz: 1, rate: 6, vx: 0, vy: 0, follow: false, mode: 'home' };
+const size = { w: 0, h: 0 };
 let focusOn = null;
-function fitView(instant = false) {
-  const bw = board.clientWidth, bh = board.clientHeight;
-  const narrow = bw < 700;
-  view.follow = narrow;
-  const z = narrow ? clamp(bw / 520, 0.55, 0.8) : Math.min((bw - 32) / WORLD.w, (bh - 70) / WORLD.h);
-  view.tz = z;
-  view.tx = (bw - WORLD.w * z) / 2;
-  view.ty = (bh - WORLD.h * z) / 2 + (narrow ? 0 : 18);
-  view.user = false;
-  if (instant) { view.x = view.tx; view.y = view.ty; view.z = view.tz; }
+const narrow = () => size.w < 700;
+const fitZoom = () => Math.min((size.w - 32) / WORLD.w, (size.h - 70) / WORLD.h);
+const readingZoom = () => (narrow() ? clamp(size.w / 400, 0.72, 1) : 1);
+const zMin = () => Math.min(0.3, fitZoom());
+const Z_MAX = 1.8;
+function measure() { size.w = board.clientWidth; size.h = board.clientHeight; }
+// pan limits at zoom z: the world can't leave the board, give or take PAD
+function bounds(z) {
+  const x = size.w - WORLD.w * z - PAD, y = size.h - WORLD.h * z - PAD;
+  return { x0: Math.min(PAD, x), x1: Math.max(PAD, x), y0: Math.min(PAD, y), y1: Math.max(PAD, y) };
 }
-function followStep() {
-  if (!view.follow || view.user || !focusOn) return;
-  const bw = board.clientWidth, bh = board.clientHeight, z = view.tz;
-  view.tx = clamp(bw / 2 - focusOn.x * z, bw - WORLD.w * z - 20, 20);
-  view.ty = clamp(bh / 2 - focusOn.y * z, bh - WORLD.h * z - 20, 20);
+function clampTargets() {
+  view.tz = clamp(view.tz, zMin(), Z_MAX);
+  const b = bounds(view.tz);
+  view.tx = clamp(view.tx, b.x0, b.x1); view.ty = clamp(view.ty, b.y0, b.y1);
+}
+function snap() { view.x = view.tx; view.y = view.ty; view.z = view.tz; }
+function freeze() { view.tx = view.x; view.ty = view.y; view.tz = view.z; view.vx = view.vy = 0; }
+// the reading view: ~100%, centred on the seam between the two "things i've made" frames, top row at the top
+function home(instant = false) {
+  const z = readingZoom(), A = frameOf.xmade, B = frameOf.own;
+  view.tz = z;
+  view.tx = size.w / 2 - ((A.x + A.w + B.x) / 2) * z;
+  view.ty = PAD;
+  clampTargets();
+  view.mode = 'home'; view.rate = 6; view.vx = view.vy = 0;
+  if (instant || reduce) snap();
+}
+function fitView() {
+  const z = fitZoom();
+  view.tz = z;
+  view.tx = (size.w - WORLD.w * z) / 2;
+  view.ty = (size.h - WORLD.h * z) / 2 + 18;
+  clampTargets();
+  view.mode = 'fit'; view.rate = 6; view.vx = view.vy = 0;
+  setFollow(false);
+  if (reduce) snap();
+}
+// anything you do to the view stops follow mode (and any flick in flight)
+function userMoved() { view.mode = 'user'; if (view.follow) setFollow(false); }
+function panBy(dx, dy, direct) {
+  const ox = view.tx, oy = view.ty;
+  view.tx += dx; view.ty += dy; clampTargets();
+  if (direct) { view.x += view.tx - ox; view.y += view.ty - oy; }
+  view.rate = 16;
+  userMoved();
 }
 function zoomAt(f, sx, sy) {
-  const z = clamp(view.tz * f, 0.3, 1.6);
+  const z = clamp(view.tz * f, zMin(), Z_MAX);
   const wx = (sx - view.tx) / view.tz, wy = (sy - view.ty) / view.tz;
   view.tz = z; view.tx = sx - wx * z; view.ty = sy - wy * z;
-  view.user = true;
+  clampTargets();
+  view.rate = 16; view.vx = view.vy = 0;
+  if (reduce) snap();
+  userMoved();
 }
+function followStep() {
+  if (!view.follow || !focusOn) return;
+  const z = view.tz;
+  view.tx = size.w / 2 - focusOn.x * z;
+  view.ty = size.h / 2 - focusOn.y * z;
+  clampTargets();
+  view.rate = 5;
+}
+const followBtn = ui.querySelector('.mode.follow'), exploreBtn = ui.querySelector('.mode.explore');
+function setFollow(on) {
+  view.follow = on;
+  followBtn.setAttribute('aria-pressed', String(on));
+  if (on) { view.mode = 'user'; view.vx = view.vy = 0; }
+}
+followBtn.addEventListener('click', () => setFollow(!view.follow));
+// explore: one-finger touch pans the board instead of scrolling the page, until tapped again
+let explore = false;
+exploreBtn.addEventListener('click', () => {
+  explore = !explore;
+  exploreBtn.setAttribute('aria-pressed', String(explore));
+  board.classList.toggle('explore', explore);
+});
+
+// flick velocity from the last ~100ms of a drag
+function tracker() {
+  const s = [];
+  return {
+    add(x, y) { const t = performance.now(); s.push({ x, y, t }); while (s.length > 2 && t - s[0].t > 100) s.shift(); },
+    vel() {
+      const a = s[0], b = s[s.length - 1];
+      if (!a || a === b || performance.now() - b.t > 70) return { x: 0, y: 0 };
+      const dt = (b.t - a.t) / 1000;
+      return { x: clamp((b.x - a.x) / dt, -4000, 4000), y: clamp((b.y - a.y) / dt, -4000, 4000) };
+    },
+  };
+}
+function fling(v) { if (reduce || Math.hypot(v.x, v.y) < 60) return; view.vx = v.x; view.vy = v.y; }
 
 // ── you ─────────────────────────────────────────────────────────────────
 let userDrag = null, pan = null;
 function boardPoint(e) { const r = board.getBoundingClientRect(); return { sx: e.clientX - r.left, sy: e.clientY - r.top }; }
 board.addEventListener('pointerdown', (e) => {
   if (e.button !== 0 || e.pointerType === 'touch' || e.target.closest('.ui, .open')) return;
+  board.focus({ preventScroll: true });
   const { sx, sy } = boardPoint(e);
   const cardEl = e.target.closest('.bcard');
   if (cardEl) {
@@ -569,7 +663,8 @@ board.addEventListener('pointerdown', (e) => {
     c.el.classList.add('sel', 'lift');
     userDrag = { c, ox: w.x - c.x, oy: w.y - c.y, orig, x0: c.x, y0: c.y };
   } else {
-    pan = { sx, sy, x: view.tx, y: view.ty };
+    freeze();
+    pan = { sx, sy, x: view.tx, y: view.ty, v: tracker() };
     board.classList.add('panning');
   }
   board.setPointerCapture(e.pointerId);
@@ -583,10 +678,13 @@ board.addEventListener('pointermove', (e) => {
     c.x = c.tx = clamp(w.x - userDrag.ox, 0, WORLD.w - c.w);
     c.y = c.ty = clamp(w.y - userDrag.oy, 0, WORLD.h - c.h);
   } else {
-    view.tx = pan.x + (sx - pan.sx); view.ty = pan.y + (sy - pan.sy); view.user = true;
+    view.tx = pan.x + (sx - pan.sx); view.ty = pan.y + (sy - pan.sy);
+    clampTargets(); view.x = view.tx; view.y = view.ty;
+    pan.v.add(sx, sy);
+    userMoved();
   }
 });
-function endPointer() {
+function endPointer(e) {
   if (userDrag) {
     const c = userDrag.c;
     c.carried = false; c.lock = null;
@@ -599,26 +697,168 @@ function endPointer() {
     else if (f && fits(f, c)) attach(c, f); else c.free = true;
     userDrag = null;
   }
-  if (pan) { pan = null; board.classList.remove('panning'); }
+  if (pan) {
+    if (e.type === 'pointerup') fling(pan.v.vel());
+    pan = null; board.classList.remove('panning');
+  }
 }
 board.addEventListener('pointerup', endPointer);
 board.addEventListener('pointercancel', endPointer);
+
+// ── wheel and trackpad ──────────────────────────────────────────────────
+// the rule, so the board never traps the page:
+//  · a wheel "gesture" is a run of wheel events less than REST (250ms) apart,
+//    trackpad momentum included.
+//  · the board only captures a gesture that *starts* with the pointer over it
+//    and the page at rest for REST, i.e. the pointer has been resting on a
+//    still board. a fast page scroll that slides the board under the pointer
+//    started elsewhere, so the whole gesture keeps scrolling the page.
+//  · inside a captured gesture, a mostly-vertical scroll falls through to the
+//    page once the board is panned to its edge in that direction. sideways
+//    scrolls stay on the board (the page doesn't scroll sideways, and it keeps
+//    the browser's back-swipe from firing).
+//  · pinch (ctrl + wheel in chrome and firefox, gesture events in safari) and
+//    ctrl/cmd + wheel always zoom the board at the pointer.
+const REST = 250, STILL = 600; // gap that ends a wheel gesture · how long the page must be still before the board takes one
+let wheelAt = -1e9, scrollAt = -1e9, wheelOwned = false;
+addEventListener('scroll', () => { scrollAt = performance.now(); }, { passive: true });
+addEventListener('wheel', (e) => {
+  const now = performance.now();
+  if (now - wheelAt > REST) wheelOwned = board.contains(e.target) && !e.target.closest('.ui') && now - scrollAt > STILL;
+  wheelAt = now;
+}, { passive: true, capture: true });
 board.addEventListener('wheel', (e) => {
-  if (!e.ctrlKey && !e.metaKey) return; // plain wheel scrolls the page
-  e.preventDefault();
   const { sx, sy } = boardPoint(e);
-  zoomAt(Math.exp(-e.deltaY * 0.004), sx, sy);
+  const unit = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? size.h : 1;
+  if (e.ctrlKey || e.metaKey) {
+    e.preventDefault();
+    zoomAt(Math.exp(-clamp(e.deltaY * unit, -30, 30) * 0.01), sx, sy);
+    return;
+  }
+  if (!wheelOwned) return;
+  let dx = e.deltaX * unit, dy = e.deltaY * unit;
+  if (e.shiftKey && !dx) { dx = dy; dy = 0; }
+  if (Math.abs(dy) > Math.abs(dx)) {
+    const b = bounds(view.tz);
+    const stuck = dy > 0 ? view.ty <= b.y0 + 0.5 : view.ty >= b.y1 - 0.5;
+    if (stuck) return; // at the edge: the page scrolls
+  }
+  e.preventDefault();
+  view.vx = view.vy = 0;
+  // trackpads send small pixel deltas: follow them exactly. mouse wheel notches ease
+  panBy(-dx, -dy, e.deltaMode === 0 && Math.abs(dx) < 60 && Math.abs(dy) < 60);
 }, { passive: false });
+// safari's trackpad pinch
+let gest = null;
+board.addEventListener('gesturestart', (e) => { e.preventDefault(); gest = touch ? null : { s: 1 }; });
+board.addEventListener('gesturechange', (e) => {
+  e.preventDefault();
+  if (!gest || touch) return;
+  const { sx, sy } = boardPoint(e);
+  zoomAt(e.scale / gest.s, sx, sy); gest.s = e.scale;
+});
+board.addEventListener('gestureend', (e) => { e.preventDefault(); gest = null; });
+
+// ── touch ───────────────────────────────────────────────────────────────
+// one finger scrolls the page (touch-action: pan-y), unless explore is on.
+// two fingers always pan and pinch the board.
+let touch = null;
+function touchPts(list) {
+  const r = board.getBoundingClientRect(), a = list[0], b = list[1];
+  if (!b) return { mx: a.clientX - r.left, my: a.clientY - r.top, d: 0 };
+  return { mx: (a.clientX + b.clientX) / 2 - r.left, my: (a.clientY + b.clientY) / 2 - r.top, d: Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY) || 1 };
+}
+function touchBegin(e) {
+  const n = e.touches.length;
+  touch = n >= 2 || (n === 1 && explore) ? { n: Math.min(n, 2), ...touchPts(e.touches), v: tracker() } : null;
+  if (touch) freeze();
+}
+board.addEventListener('touchstart', (e) => { if (e.target.closest('.ui')) { touch = null; return; } touchBegin(e); }, { passive: true });
+board.addEventListener('touchmove', (e) => {
+  if (!touch) return;
+  if (!e.cancelable) { touch = null; return; } // the page already took it as a scroll
+  if (Math.min(e.touches.length, 2) !== touch.n) { touchBegin(e); return; }
+  e.preventDefault();
+  const p = touchPts(e.touches);
+  const z = touch.n === 2 ? clamp(view.tz * (p.d / touch.d), zMin(), Z_MAX) : view.tz;
+  const wx = (touch.mx - view.tx) / view.tz, wy = (touch.my - view.ty) / view.tz;
+  view.tz = z; view.tx = p.mx - wx * z; view.ty = p.my - wy * z;
+  clampTargets(); snap();
+  touch.v.add(p.mx, p.my);
+  Object.assign(touch, { mx: p.mx, my: p.my, d: p.d });
+  userMoved();
+}, { passive: false });
+function touchEnd(e) {
+  if (!touch) return;
+  const prev = touch;
+  touchBegin(e);
+  if (!touch && e.type === 'touchend') fling(prev.v.vel());
+}
+board.addEventListener('touchend', touchEnd);
+board.addEventListener('touchcancel', touchEnd);
+
+// ── the minimap: every frame, the agents and the viewport. click or drag to scrub ─
+const mini = ui.querySelector('.minimap'), miniView = mini.querySelector('.mv');
+mini.style.aspectRatio = `${WORLD.w} / ${WORLD.h}`;
+const pct = (v, of) => `${((v / of) * 100).toFixed(2)}%`;
+for (const f of FRAMES) {
+  const r = el('span', `mf${f.inbox ? ' inbox' : ''}`);
+  r.dataset.color = f.color;
+  Object.assign(r.style, { left: pct(f.x, WORLD.w), top: pct(f.y, WORLD.h), width: pct(f.w, WORLD.w), height: pct(f.h, WORLD.h) });
+  mini.insertBefore(r, miniView);
+}
+for (const a of AGENTS) { a.dot = el('span', 'ma'); a.dot.style.setProperty('--ac', a.color); mini.append(a.dot); }
+let scrub = null;
+function scrubTo(e, direct) {
+  const r = mini.getBoundingClientRect();
+  const wx = ((e.clientX - r.left) / r.width) * WORLD.w, wy = ((e.clientY - r.top) / r.height) * WORLD.h;
+  view.vx = view.vy = 0;
+  view.tx = size.w / 2 - wx * view.tz; view.ty = size.h / 2 - wy * view.tz;
+  clampTargets();
+  view.rate = 14;
+  if (direct || reduce) { view.x = view.tx; view.y = view.ty; }
+  userMoved();
+}
+mini.addEventListener('pointerdown', (e) => {
+  if (e.button !== 0) return;
+  scrub = { id: e.pointerId };
+  mini.setPointerCapture(e.pointerId);
+  mini.classList.add('scrubbing');
+  scrubTo(e, false);
+  e.preventDefault();
+});
+mini.addEventListener('pointermove', (e) => { if (scrub) scrubTo(e, true); });
+const endScrub = () => { scrub = null; mini.classList.remove('scrubbing'); };
+mini.addEventListener('pointerup', endScrub);
+mini.addEventListener('pointercancel', endScrub);
+
+// ── keyboard, once the board has focus ──────────────────────────────────
+board.tabIndex = 0;
+board.addEventListener('keydown', (e) => {
+  if (e.target !== board || e.altKey || e.ctrlKey || e.metaKey) return;
+  const step = e.shiftKey ? 320 : 90, cx = size.w / 2, cy = size.h / 2;
+  switch (e.key) {
+    case 'ArrowLeft': panBy(step, 0); break;
+    case 'ArrowRight': panBy(-step, 0); break;
+    case 'ArrowUp': panBy(0, step); break;
+    case 'ArrowDown': panBy(0, -step); break;
+    case '+': case '=': zoomAt(1.2, cx, cy); break;
+    case '-': case '_': zoomAt(1 / 1.2, cx, cy); break;
+    case '0': home(); break;
+    default: return;
+  }
+  e.preventDefault();
+});
 ui.querySelector('.zoom').addEventListener('click', (e) => {
   const b = e.target.closest('button');
   if (!b) return;
   if (b.dataset.z === 'fit') { fitView(); return; }
-  zoomAt(b.dataset.z === '+' ? 1.2 : 1 / 1.2, board.clientWidth / 2, board.clientHeight / 2);
+  zoomAt(b.dataset.z === '+' ? 1.2 : 1 / 1.2, size.w / 2, size.h / 2);
 });
 
 // ── frame loop ──────────────────────────────────────────────────────────
 const zpct = ui.querySelector('.zpct');
-let last = performance.now();
+let last = performance.now(), miniKey = '';
 function render() {
   world.style.transform = `translate(${view.x.toFixed(2)}px, ${view.y.toFixed(2)}px) scale(${view.z.toFixed(4)})`;
   board.style.setProperty('--gx', `${view.x.toFixed(1)}px`);
@@ -632,7 +872,17 @@ function render() {
     }
   }
   const inv = 1 / view.z;
-  for (const a of AGENTS) a.el.style.transform = `translate(${a.x.toFixed(1)}px, ${a.y.toFixed(1)}px) scale(${inv.toFixed(4)})`;
+  for (const a of AGENTS) {
+    a.el.style.transform = `translate(${a.x.toFixed(1)}px, ${a.y.toFixed(1)}px) scale(${inv.toFixed(4)})`;
+    a.dot.style.left = pct(a.x, WORLD.w); a.dot.style.top = pct(a.y, WORLD.h);
+  }
+  // the viewport on the minimap, in world units, clipped by the minimap itself
+  const vx = -view.x / view.z, vy = -view.y / view.z, vw = size.w / view.z, vh = size.h / view.z;
+  const key = `${vx.toFixed(1)},${vy.toFixed(1)},${vw.toFixed(1)}`;
+  if (key !== miniKey) {
+    miniKey = key;
+    Object.assign(miniView.style, { left: pct(vx, WORLD.w), top: pct(vy, WORLD.h), width: pct(vw, WORLD.w), height: pct(vh, WORLD.h) });
+  }
   updateEdges();
 }
 function tick(now) {
@@ -646,42 +896,74 @@ function tick(now) {
   const k = 1 - Math.exp(-dt * 11);
   for (const c of cards.values()) if (!c.carried) { c.x += (c.tx - c.x) * k; c.y += (c.ty - c.y) * k; }
   followStep();
-  const kv = 1 - Math.exp(-dt * 5);
+  // a flick keeps gliding after you let go, and stops at the edge
+  if (view.vx || view.vy) {
+    const ox = view.tx, oy = view.ty, wantX = ox + view.vx * dt, wantY = oy + view.vy * dt;
+    view.tx = wantX; view.ty = wantY; clampTargets();
+    if (Math.abs(view.tx - wantX) > 0.01) view.vx = 0;
+    if (Math.abs(view.ty - wantY) > 0.01) view.vy = 0;
+    view.x += view.tx - ox; view.y += view.ty - oy;
+    const d = Math.exp(-dt * 4.2);
+    view.vx *= d; view.vy *= d;
+    if (Math.hypot(view.vx, view.vy) < 12) view.vx = view.vy = 0;
+  }
+  const kv = reduce ? 1 : 1 - Math.exp(-dt * view.rate);
   view.x += (view.tx - view.x) * kv; view.y += (view.ty - view.y) * kv; view.z += (view.tz - view.z) * kv;
   render();
 }
 
 // ── boot ────────────────────────────────────────────────────────────────
+// a card lands in its frame if it fits, else the inbox, else it waits off the board
+const dropped = [];
+function place(id, f) {
+  if (!byId[id] || cards.has(id)) return null;
+  const c = makeCard(id);
+  if (fits(f, c)) attach(c, f);
+  else if (!f.inbox && fits(frameOf.inbox, c)) attach(c, frameOf.inbox);
+  else { c.el.remove(); cards.delete(id); dropped.push(id); return null; }
+  return c;
+}
 function boot() {
+  measure();
   measurePool();
-  for (const [fid, ids] of Object.entries(START)) for (const id of ids) attach(makeCard(id), frameOf[fid]);
+  for (const [fid, ids] of Object.entries(START)) for (const id of ids) place(id, frameOf[fid]);
+  board.dataset.dropped = dropped.join(' '); // for the shots tool: anything that didn't fit at load
   snapAll();
-  AGENTS.forEach((a, i) => { const f = frameOf[['xmade', 'own', 'vision', 'charles'][i]]; a.x = f.x + f.w * 0.6; a.y = f.y + f.h * 0.55; });
+  AGENTS.forEach((a, i) => { const f = frameOf[['xmade', 'own', 'charles'][i]]; a.x = f.x + f.w * 0.6; a.y = f.y + f.h * 0.55; });
   // a couple of arrows already drawn, so the board never starts bare
-  for (const [x, y, label] of LINKS.filter(([p, q]) => (p === 'x-ade' && q === 't-skills') || (p === 'x-p3' && q === 'x-logo'))) { const e = newEdge(cards.get(x), cards.get(y), label, AGENTS[0].color); e.b = cards.get(y); linked.add(`${x}|${y}`); }
+  for (const [x, y, label] of LINKS.filter(([p, q]) => (p === 'x-ade' && q === 't-skills') || (p === 'x-p3' && q === 'x-logo'))) {
+    const A = cards.get(x), B = cards.get(y);
+    if (A && B) { const e = newEdge(A, B, label, AGENTS[0].color); e.b = B; linked.add(`${x}|${y}`); }
+  }
   focusOn = AGENTS[0];
   if (reduce) stillLife();
-  fitView(true);
+  home(true);
+  setFollow(narrow() && !reduce);
+  if (view.follow) { followStep(); snap(); }
   render();
   board.classList.add('ready');
-  if (reduce) return;
 
   let inView = false;
-  const sync = () => { active = inView && !document.hidden; board.classList.toggle('live', active); };
+  const sync = () => { active = inView && !document.hidden; board.classList.toggle('live', active && !reduce); };
   new IntersectionObserver(([e]) => { inView = e.isIntersecting; sync(); }, { threshold: 0.15 }).observe(board);
   document.addEventListener('visibilitychange', sync);
-  new ResizeObserver(() => { if (!view.user) fitView(); }).observe(board);
-  AGENTS.forEach((a) => life(a));
+  new ResizeObserver(() => {
+    measure();
+    if (view.mode === 'home') home(); else if (view.mode === 'fit') fitView(); else clampTargets();
+    if (!active) { snap(); render(); }
+  }).observe(board);
+  // reduced motion still gets the view (pan, zoom, minimap), just no agents at work
+  if (!reduce) AGENTS.forEach((a) => life(a));
   requestAnimationFrame(tick);
 }
 
-// reduced motion: the board as it looks once the crew has been at it a while
+// reduced motion: the board as it looks once the agents have been at it a while
 function stillLife() {
   for (const c of [...frameOf.inbox.cards]) { const f = homeOf(c.id); if (fits(f, c)) { detach(c); attach(c, f); } }
   for (const id of POOL.slice(0, 3)) { const f = homeOf(id); const c = makeCard(id); c.written = true; if (fits(f, c)) attach(c, f); else { c.el.remove(); cards.delete(id); } }
   snapAll();
   for (const [x, y, label] of LINKS.slice(0, 5)) { const A = cards.get(x), B = cards.get(y); if (A && B && !linked.has(`${x}|${y}`)) { const e = newEdge(A, B, label, AGENTS[1].color); e.b = B; linked.add(`${x}|${y}`); } }
-  const spots = [cards.get('x-twins'), cards.get('t-pokemon'), cards.get('v-already'), cards.get('c-mini')];
+  const spots = [cards.get('x-twins'), cards.get('t-pokemon'), cards.get('v-already')];
   AGENTS.forEach((a, i) => { const c = spots[i] || [...cards.values()][i]; a.x = c.x + c.w * 0.7; a.y = c.y + c.h * 0.6; });
 }
 
