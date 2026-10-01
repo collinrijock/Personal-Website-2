@@ -33,3 +33,10 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# nda gate: the real content and request log live on the server, never here
+/projects.md
+/sections/
+/projects.json
+/nda-data/
+requests.jsonl

@@ -25,13 +25,16 @@ const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 const ease = (u) => (u < 0.5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2);
 
 // ── the board ───────────────────────────────────────────────────────────
-// the things i've made are the top row, the context sits under them, ideas and writing
-// fill the bottom row, and the inbox runs down the side.
+// the things i've made are the top row, with the ones under nda in a locked strip
+// right under them. the context sits below that, ideas and writing fill the
+// bottom row, and the inbox runs down the side.
 const CELL = 212, CW = 196, HEAD = 48, GAP = 12, M = 26, SEP = 28;
-const H1 = 560, H2 = 400, H3 = 620, ROW2 = H1 + SEP, ROW3 = ROW2 + H2 + SEP;
+const H1 = 560, HN = 214, H2 = 400, H3 = 620, ROWN = H1 + SEP, ROW2 = ROWN + HN + SEP, ROW3 = ROW2 + H2 + SEP;
 const FRAMES = [
   { id: 'xmade', title: "things i've made · at exowatt", color: 'blue', x: 0, y: 0, cols: 3, w: 674, h: H1 },
   { id: 'own', title: "things i've made · on my own time", color: 'pink', x: 702, y: 0, cols: 3, w: 674, h: H1 },
+  // locked: no cards live here, and nothing (agents or you) can sort one in or out
+  { id: 'nda', title: "things i've made · under nda", color: 'lock', x: 0, y: ROWN, cols: 1, w: 1376, h: HN, locked: true },
   { id: 'exowatt', title: 'exowatt · now', color: 'blue', x: 0, y: ROW2, cols: 2, h: H2 },
   { id: 'vision', title: 'how i build', color: 'yellow', x: 468, y: ROW2, cols: 2, h: H2 },
   { id: 'charles', title: 'super charles', color: 'purple', x: 936, y: ROW2, cols: 2, h: H2 },
@@ -96,12 +99,33 @@ board.append(world);
 function el(tag, cls, html) { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; }
 function svg(tag, attrs = {}) { const e = document.createElementNS('http://www.w3.org/2000/svg', tag); for (const k in attrs) e.setAttribute(k, attrs[k]); return e; }
 
+const LOCK = '<svg class="lk" viewBox="0 0 24 24" aria-hidden="true"><path d="M5.5 11h13v10h-13zM8 11V7.5a4 4 0 0 1 8 0V11"/></svg>';
 for (const f of FRAMES) {
-  f.el = el('div', `frame${f.inbox ? ' inbox' : ''}`);
+  f.el = el('div', `frame${f.inbox ? ' inbox' : ''}${f.locked ? ' locked' : ''}`);
   f.el.dataset.color = f.color;
   Object.assign(f.el.style, { left: `${f.x}px`, top: `${f.y}px`, width: `${f.w}px`, height: `${f.h}px` });
-  f.el.innerHTML = `<div class="ft"><span>${f.title}</span>${f.inbox ? '<b class="count">0</b>' : ''}</div>`;
+  f.el.innerHTML = f.locked ? lockedFrame(f) : `<div class="ft"><span>${f.title}</span>${f.inbox ? '<b class="count">0</b>' : ''}</div>`;
   world.append(f.el);
+}
+
+// the locked strip: the pitch and a real button in its title bar (so it shows in
+// the opening view), and redacted placeholders under it. the placeholders are
+// shapes only, there's nothing under the bars to read
+function lockedFrame(f) {
+  const ghost = (color, kind, bars) => `<div class="ghost ${kind}" data-color="${color}"><span class="glk">${LOCK}</span>${bars.map((w) => `<i style="width:${w}%"></i>`).join('')}</div>`;
+  return `<div class="ft"><span class="nda-t">${LOCK}${f.title}</span>
+    <span class="nda-p">work that isn't public yet, from exowatt and my own projects. sign a short nda and i'll share it.</span>
+    <button type="button" class="nda-act" data-nda-open>${LOCK}<span class="lbl">request access</span><span class="ar" aria-hidden="true">→</span></button>
+    <b class="count">locked</b></div>
+  <div class="nda-in" aria-hidden="true">
+    ${ghost('blue', 'sticky', [88, 72, 94, 40])}
+    ${ghost('white', 'link', [64, 36, 90, 70])}
+    ${ghost('yellow', 'sticky blur', [80, 92, 66])}
+    ${ghost('purple', 'sticky', [70, 96, 84, 52])}
+    ${ghost('white', 'link blur', [58, 30, 86, 62])}
+    ${ghost('green', 'sticky', [92, 64, 80])}
+    ${ghost('pink', 'sticky blur', [76, 90, 58, 84])}
+  </div>`;
 }
 
 // ui chrome, in screen space
@@ -173,6 +197,7 @@ function slots(f, list = f.cards) {
   return { out, bottom: Math.max(...col) - GAP };
 }
 function fits(f, extra) {
+  if (f.locked) return false;
   const probe = [...f.cards, extra];
   return slots(f, probe).bottom <= f.y + f.h - 14;
 }
@@ -430,7 +455,7 @@ const ACTIONS = {
   park: {
     weight: () => (frameOf.inbox.cards.length < 2 ? 1.6 : 0),
     async run(a) {
-      const list = FRAMES.filter((f) => !f.inbox && f.cards.length > 2).flatMap((f) => f.cards.slice(1)).filter((c) => free(c) && !c.written);
+      const list = FRAMES.filter((f) => !f.inbox && !f.locked && f.cards.length > 2).flatMap((f) => f.cards.slice(1)).filter((c) => free(c) && !c.written);
       const c = pick(list);
       if (!c || !fits(frameOf.inbox, c)) return false;
       c.lock = a;
@@ -519,7 +544,7 @@ async function typeInto(a, c) {
 }
 
 async function wander(a) {
-  const f = pick(FRAMES);
+  const f = pick(FRAMES.filter((F) => !F.locked));
   await move(a, rand(f.x + 20, f.x + f.w - 20), rand(f.y + 50, f.y + f.h - 30), { speed: 360, arc: 0.3 });
 }
 
@@ -648,7 +673,7 @@ function fling(v) { if (reduce || Math.hypot(v.x, v.y) < 60) return; view.vx = v
 let userDrag = null, pan = null;
 function boardPoint(e) { const r = board.getBoundingClientRect(); return { sx: e.clientX - r.left, sy: e.clientY - r.top }; }
 board.addEventListener('pointerdown', (e) => {
-  if (e.button !== 0 || e.pointerType === 'touch' || e.target.closest('.ui, .open')) return;
+  if (e.button !== 0 || e.pointerType === 'touch' || e.target.closest('.ui, .open, .nda-act')) return;
   board.focus({ preventScroll: true });
   const { sx, sy } = boardPoint(e);
   const cardEl = e.target.closest('.bcard');
@@ -692,7 +717,7 @@ function endPointer(e) {
     // dropped inside a frame with room: it lives there now. anywhere else: it's loose, and someone will tidy it
     const moved = Math.hypot(c.x - userDrag.x0, c.y - userDrag.y0);
     const cx = c.x + c.w / 2, cy = c.y + c.h / 2;
-    const f = FRAMES.find((F) => cx > F.x && cx < F.x + F.w && cy > F.y && cy < F.y + F.h);
+    const f = FRAMES.find((F) => !F.locked && cx > F.x && cx < F.x + F.w && cy > F.y && cy < F.y + F.h);
     if (moved < 5 && userDrag.orig) { const o = userDrag.orig; o.f.cards.splice(o.i, 0, c); c.frame = o.f; relayout(o.f); }
     else if (f && fits(f, c)) attach(c, f); else c.free = true;
     userDrag = null;
@@ -773,7 +798,7 @@ function touchBegin(e) {
   touch = n >= 2 || (n === 1 && explore) ? { n: Math.min(n, 2), ...touchPts(e.touches), v: tracker() } : null;
   if (touch) freeze();
 }
-board.addEventListener('touchstart', (e) => { if (e.target.closest('.ui')) { touch = null; return; } touchBegin(e); }, { passive: true });
+board.addEventListener('touchstart', (e) => { if (e.target.closest('.ui, .nda-act')) { touch = null; return; } touchBegin(e); }, { passive: true });
 board.addEventListener('touchmove', (e) => {
   if (!touch) return;
   if (!e.cancelable) { touch = null; return; } // the page already took it as a scroll
@@ -854,6 +879,19 @@ ui.querySelector('.zoom').addEventListener('click', (e) => {
   if (!b) return;
   if (b.dataset.z === 'fit') { fitView(); return; }
   zoomAt(b.dataset.z === '+' ? 1.2 : 1 / 1.2, size.w / 2, size.h / 2);
+});
+
+// the request button lives on the board, so tabbing to it brings it into view.
+// (the board clips with overflow: hidden, which the browser would otherwise
+// scroll to show a focused child, knocking the world out of place)
+const ndaBtn = frameOf.nda.el.querySelector('.nda-act');
+board.addEventListener('scroll', () => { board.scrollTop = 0; board.scrollLeft = 0; });
+ndaBtn.addEventListener('focus', () => {
+  board.scrollTop = 0; board.scrollLeft = 0;
+  const r = board.getBoundingClientRect(), b = ndaBtn.getBoundingClientRect(), m = 48;
+  const dx = b.left - r.left < m ? m - (b.left - r.left) : b.right > r.right - m ? r.right - m - b.right : 0;
+  const dy = b.top - r.top < m ? m - (b.top - r.top) : b.bottom > r.bottom - 90 ? r.bottom - 90 - b.bottom : 0;
+  if (dx || dy) panBy(dx, dy);
 });
 
 // ── frame loop ──────────────────────────────────────────────────────────

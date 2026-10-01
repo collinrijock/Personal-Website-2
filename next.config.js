@@ -12,6 +12,20 @@ const nextConfig = {
       ],
     };
   },
+  // the nda pages and api are private: never cached, never indexed (the pages
+  // set these too; this covers anything that slips past them)
+  async headers() {
+    const priv = [
+      { key: "Cache-Control", value: "private, no-store" },
+      { key: "X-Robots-Tag", value: "noindex, nofollow" },
+      { key: "Referrer-Policy", value: "no-referrer" },
+    ];
+    return [
+      { source: "/nda", headers: priv },
+      { source: "/nda/:path*", headers: priv },
+      { source: "/api/nda/:path*", headers: priv },
+    ];
+  },
   webpack: (config, options) => {
     config.module.rules.push({
       test: /\.(glsl|vs|fs|vert|frag)$/,
