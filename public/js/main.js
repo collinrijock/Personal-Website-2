@@ -137,6 +137,27 @@ async function start() {
   window.__field = field;
 }
 
+// the corner guide is a door to the 3d section. it steps aside while the board or
+// the 3d section fills the screen (it would sit on the board's minimap and zoom)
+{
+  const big = new Map();
+  const io = new IntersectionObserver((es) => {
+    for (const e of es) big.set(e.target, e.intersectionRatio > 0.3 || e.intersectionRect.height > window.innerHeight * 0.45);
+    root.classList.toggle('guide-hide', [...big.values()].some(Boolean));
+  }, { threshold: [0, 0.15, 0.3, 0.5, 0.75, 1] });
+  for (const el of $$('.board, #fly')) io.observe(el);
+}
+
+// in-page links (the nav's "map", the hero pill) glide down instead of jumping
+document.addEventListener('click', (e) => {
+  const a = e.target.closest?.('a[href^="#"]');
+  const to = a && a.getAttribute('href').length > 1 && document.getElementById(a.getAttribute('href').slice(1));
+  if (!to || e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey) return;
+  e.preventDefault();
+  to.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+  history.replaceState(null, '', a.getAttribute('href'));
+});
+
 // ── boot ────────────────────────────────────────────────────────────────
 measure();
 window.addEventListener('resize', () => requestAnimationFrame(measure));

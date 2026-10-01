@@ -22,9 +22,10 @@ const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
 /**
  * spots: the cluster boards, { id, c: centre, right, up, n, hw, hh } (THREE.Vector3s).
+ * guide: false leaves out the grunt that follows the camera (the scroll-driven fly-through).
  * returns { update(dt, t, view), setGuideMood(state) }.
  */
-export function createGrunts({ THREE, CSS3DObject, scene, camera, spots, reduce, touch }) {
+export function createGrunts({ THREE, CSS3DObject, scene, camera, spots, reduce, touch, guide = true }) {
   const V = THREE.Vector3;
   const rand = rng('map:grunts');
   const pick = (a) => a[Math.floor(rand() * a.length)];
@@ -45,7 +46,8 @@ export function createGrunts({ THREE, CSS3DObject, scene, camera, spots, reduce,
     return p;
   }
 
-  for (const def of CAST) {
+  // the front page's fly-through has no one to guide: it leaves the guide at home
+  for (const def of guide ? CAST : CAST.filter((d) => d.role !== 'guide')) {
     const look = rollLook(def.seed);
     const name = rollName(def.seed).toLowerCase();
     const id = `g${grunts.length}`;
@@ -247,7 +249,8 @@ export function createGrunts({ THREE, CSS3DObject, scene, camera, spots, reduce,
   }
 
   function setGuideMood(state) {
-    const g = grunts[0];
+    const g = grunts.find((x) => x.role === 'guide');
+    if (!g) return;
     g.guideMood = state;
     if (!g.hover && !g.override) { setMood(g, state); g.moodUntil = now + 4; }
   }

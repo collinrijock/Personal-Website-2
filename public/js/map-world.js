@@ -1,6 +1,15 @@
 // map-world.js — the brainstorm, in 3d.
 // webgl draws the air: palette blobs, a field of specks, the arrows (with pulses) and the frames.
 // css3d draws everything you read: cards, frame titles, arrow labels, grunts. one camera drives both.
+//
+// two modes:
+//   free    map.html. the page is the world: window-sized, wheel / drag / pinch / keys fly it,
+//           there's an intro, a tour and a guide grunt, and it draws whenever the tab is visible.
+//   scroll  the front page's #fly section (js/fly.js). sized by the stage element, no input at all
+//           (the page scrolls over it), no intro / tour / guide, and it only draws between start()
+//           and stop(). setProgress(p) puts the camera at p in [0, 1] along a precomputed flight:
+//           far out, in to the name, around the ring past the boards in ROUTE, then a dive
+//           forward at the end. the caller smooths p; the camera follows it exactly.
 import * as THREE from 'three';
 import { CSS3DRenderer, CSS3DObject } from 'three/addons/renderers/CSS3DRenderer.js';
 import { CLUSTERS, NODES, EDGES } from './content.js';
@@ -12,10 +21,13 @@ const V3 = THREE.Vector3;
 const DEG = Math.PI / 180;
 const FOV = 50;
 const UP = new V3(0, 1, 0);
+// the fly-through's lap: every board it stops at, in order (the ones between it passes)
+export const ROUTE = ['me', 'vision', 'xmade', 'things', 'ideas', 'writing', 'links'];
 export const TOUR = ['me', 'vision', 'exowatt', 'xmade', 'charles', 'work', 'things', 'games', 'ideas', 'writing', 'before', 'stack', 'links']
   .filter((id) => CLUSTERS.some((c) => c.id === id));
 
 const PAD = 34, BAR = 54; // frame padding and title bar, in card pixels
+const START = { pos: new V3(2400, 2300, 15500), look: new V3(0, 0, 0) }; // far out, where the intro begins
 const FAR = [1900, 7600]; // distance fade: starts, ends
 const PASTEL = { yellow: '#fff1a8', pink: '#ffd6e4', blue: '#d3e7ff', green: '#d4f5d9', purple: '#e6dcff', gray: '#e9e9ec', white: '#ffffff' };
 // the arrows walk the palette from blue through violet, pink and orange to a deep yellow
@@ -177,8 +189,10 @@ void main() {
 
 /* ── the world ─────────────────────────────────────────────────────── */
 
-export async function createWorld({ stage, reduce = false, touch = false, onTour = () => {} }) {
-  let vw = innerWidth, vh = innerHeight;
+export async function createWorld({ stage, reduce = false, touch = false, onTour = () => {}, mode = 'free', route = ROUTE, dark = false }) {
+  const scroll = mode === 'scroll';
+  const viewSize = () => (scroll ? [stage.clientWidth || innerWidth, stage.clientHeight || innerHeight] : [innerWidth, innerHeight]);
+  let [vw, vh] = viewSize();
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
   const tanV = Math.tan((FOV / 2) * DEG);
 
@@ -205,7 +219,7 @@ export async function createWorld({ stage, reduce = false, touch = false, onTour
   const byId = new Map(cards.map((k) => [k.n.id, k]));
   const clusters = CLUSTERS.map((c, i) => ({ ...c, i, cards: cards.filter((k) => k.n.cluster === c.id) }));
   const clusterOf = new Map(clusters.map((c) => [c.id, c]));
-  for (const k of cards) { k.cl = clusterOf.get(k.n.cluster); k.el.style.position = 'absolute'; meas.append(k.el); }
+  for (const k of cards) { k.cl = clusterOf.get(k.n.cluster); k.el.style.position = 'absolute'; if (scroll) k.el.dataset.board = k.n.cluster; meas.append(k.el); }
   const titles = clusters.filter((c) => c.id !== 'me').map((c) => {
     const el = document.createElement('div');
     el.className = 'ftitle';
@@ -428,18 +442,34 @@ export async function createWorld({ stage, reduce = false, touch = false, onTour
 
   /* ── frames ── */
   const plane = new THREE.PlaneGeometry(1, 1);
-  const frames = titles.map(({ c: base, el, w }) => {
-    const cl = clusterOf.get(base.id);
+  // a frame's paper: translucent on the light sky; on a dark one (the front page in dark mode) near opaque
+  function paper(cl, night) {
     const white = cl.color === 'white';
     const past = rgb(PASTEL[cl.color] || '#ffffff');
+    if (night) {
+      return {
+        fill: white ? [0.925, 0.935, 0.955] : mix(past, [1, 1, 1], 0.16), fillA: 0.9,
+        bar: white ? [1, 1, 1] : past,
+        line: white ? [0.7, 0.73, 0.8] : mix(past, [0.04, 0.06, 0.13], 0.22),
+      };
+    }
+    return {
+      fill: white ? [0.972, 0.976, 0.988] : mix(past, [1, 1, 1], 0.3), fillA: white ? 0.64 : 0.56,
+      bar: white ? [1, 1, 1] : past,
+      line: white ? [0.83, 0.85, 0.9] : mix(past, [0.04, 0.06, 0.13], 0.13),
+    };
+  }
+  const frames = titles.map(({ c: base, el, w }) => {
+    const cl = clusterOf.get(base.id);
+    const pp = paper(cl, dark);
     const mat = new THREE.ShaderMaterial({
       uniforms: {
         uSize: { value: new THREE.Vector2(1, 1) },
         uBar: { value: BAR }, uR: { value: 14 }, uBw: { value: 2 },
-        uFill: { value: new THREE.Vector3(...(white ? [0.972, 0.976, 0.988] : mix(past, [1, 1, 1], 0.3))) },
-        uFillA: { value: white ? 0.64 : 0.56 },
-        uBarC: { value: new THREE.Vector3(...(white ? [1, 1, 1] : past)) },
-        uLine: { value: new THREE.Vector3(...(white ? [0.83, 0.85, 0.9] : mix(past, [0.04, 0.06, 0.13], 0.13))) },
+        uFill: { value: new THREE.Vector3(...pp.fill) },
+        uFillA: { value: pp.fillA },
+        uBarC: { value: new THREE.Vector3(...pp.bar) },
+        uLine: { value: new THREE.Vector3(...pp.line) },
         uAlpha: { value: 0 },
       },
       vertexShader: FRAME_VS,
@@ -635,6 +665,107 @@ export async function createWorld({ stage, reduce = false, touch = false, onTour
     return { pos: k.pos.clone().addScaledVector(dir, D), look: k.pos.clone() };
   }
 
+  /* ── the fly-through (scroll mode): one flight, scrubbed by the page ── */
+  // keys are camera poses (position + a point to look at). position and look each run along a
+  // centripetal catmull-rom through the keys; the plan says how much of p each leg gets, and eases
+  // every leg in and out, so the camera settles at each board and glides between them.
+  const path = { p: 0, keys: [], plan: [], stops: [], total: 1, posC: null, lookC: null };
+  let stale = false;
+  const hAngle = (v) => Math.atan2(v.x, v.z);
+  // between boards: linger at each end, swoop through the middle (smoothstep of a smoothstep)
+  const glide = (u) => { const a = u * u * (3 - 2 * u); return a * a * (3 - 2 * a); };
+  const hLen = (v) => Math.hypot(v.x, v.z);
+  function buildPath() {
+    const keys = [], plan = [], stops = [];
+    const key = (pos, look) => keys.push({ pos: pos.clone(), look: look.clone() }) - 1;
+    const ringR = ring.reduce((a, cl) => a + hLen(cl.c), 0) / Math.max(1, ring.length);
+    const at = (ang, r, y) => new V3(Math.sin(ang) * r, y, Math.cos(ang) * r);
+    let last = key(START.pos, START.look);
+    let lead = 1.5; // the first leg, in from far out, is the longest
+    for (const id of route) {
+      const cl = clusterOf.get(id);
+      if (!cl) continue;
+      const s = stopShot(cl);
+      const end = s.pan ? s.pos.clone().addScaledVector(cl.right, s.ox).addScaledVector(cl.up, -s.oy) : s.start;
+      const endLook = end.clone().add(s.look).sub(s.start);
+      const from = keys[last];
+      const a0 = last;
+      // leaving the inside of the ring (the name's board), back out through the gap first
+      if (hLen(from.pos) < ringR) {
+        key(at(hAngle(from.pos), ringR + 1300, from.pos.y + 160), from.look.clone().lerp(s.look, 0.3));
+      } else {
+        // a long way round the ring: swing wide and keep looking in, so the boards between go by
+        let d = hAngle(s.start) - hAngle(from.pos);
+        d = ((((d + Math.PI) % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI)) - Math.PI;
+        const n = Math.floor(Math.abs(d) / (40 * DEG));
+        const r0 = hLen(from.pos), r1 = hLen(s.start), l0 = hLen(from.look), l1 = hLen(s.look);
+        for (let j = 1; j <= n; j++) {
+          const u = j / (n + 1);
+          const ang = hAngle(from.pos) + d * u;
+          const lift = Math.sin(u * Math.PI) * 220;
+          key(at(ang, Math.max(r0, r1) * 1.1, from.pos.y + (s.start.y - from.pos.y) * u + lift),
+            at(ang, l0 + (l1 - l0) * u, from.look.y + (s.look.y - from.look.y) * u));
+        }
+      }
+      const b = key(s.start, s.look);
+      plan.push({ a: a0, b, w: lead + 0.3 * (b - a0 - 1), ease: glide });
+      lead = 0.85;
+      const stop = { id, title: cl.title, at: 0, w0: 0 };
+      if (s.pan) {
+        const c = key(end, endLook);
+        plan.push({ a: b, b: c, w: 1.4, lin: true, stop });
+        last = c;
+      } else {
+        plan.push({ a: b, b, w: 0.9, stop });
+        last = b;
+      }
+      stops.push(stop);
+    }
+    // the end: up and forward over the last board, into open sky, where the call to action waits
+    const L = keys[last];
+    const fwdL = L.look.clone().sub(L.pos).normalize();
+    const reach = L.pos.distanceTo(L.look);
+    const top = L.pos.clone().addScaledVector(fwdL, reach * 0.55).addScaledVector(UP, 1500);
+    const dive = key(top, top.clone().addScaledVector(fwdL.clone().addScaledVector(UP, 0.6).normalize(), 4000));
+    plan.push({ a: last, b: dive, w: 1.4, ease: (u) => u * u * (2 - u) * 0.5 + u * u * 0.5 });
+    path.total = plan.reduce((a, e) => a + e.w, 0);
+    let acc = 0;
+    for (const e of plan) {
+      if (e.stop) { e.stop.at = (acc + e.w / 2) / path.total; }
+      acc += e.w;
+    }
+    path.keys = keys;
+    path.plan = plan;
+    path.stops = stops;
+    const curve = (pts) => new THREE.CatmullRomCurve3(pts, false, 'centripetal');
+    path.posC = curve(keys.map((k) => k.pos));
+    path.lookC = curve(keys.map((k) => k.look));
+  }
+  const pathPos = new V3(), pathLook = new V3(), pathTmp = new V3();
+  function followPath() {
+    const n = path.keys.length - 1;
+    let x = path.p * path.total;
+    let e = path.plan[path.plan.length - 1], u = 1;
+    for (const it of path.plan) {
+      if (x <= it.w) { e = it; u = it.w ? x / it.w : 1; break; }
+      x -= it.w;
+    }
+    const v = e.ease ? e.ease(u) : u * u * (3 - 2 * u);
+    if (e.lin) {
+      const A = path.keys[e.a], B = path.keys[e.b];
+      pathPos.lerpVectors(A.pos, B.pos, v);
+      pathLook.lerpVectors(A.look, B.look, v);
+    } else {
+      const t = (e.a + (e.b - e.a) * v) / n;
+      path.posC.getPoint(t, pathPos);
+      path.lookC.getPoint(t, pathLook);
+    }
+    ctl.pos.copy(pathPos);
+    pathTmp.copy(pathLook).sub(pathPos).normalize();
+    ctl.yaw = ctl.tyaw = Math.atan2(-pathTmp.x, -pathTmp.z);
+    ctl.pitch = ctl.tpitch = Math.asin(clamp(pathTmp.y, -1, 1));
+  }
+
   /* ── tour ── */
   const tour = { on: false, i: 0, arrived: 0, stop: null, dwell: 7, ending: false };
   const emitTour = () => onTour({ on: tour.on, i: tour.i, n: TOUR.length, title: clusterOf.get(TOUR[tour.i]).title });
@@ -700,109 +831,111 @@ export async function createWorld({ stage, reduce = false, touch = false, onTour
     }
   }
 
-  /* ── input ── */
+  /* ── input (free mode only: in scroll mode the page scrolls over the stage) ── */
   const pointer = { x: 0, y: 0, active: false, at: 0 };
-  const ptrs = new Map();
-  let drag = null, pinch = null, dragged = false;
-  const inUi = (t) => !!t?.closest?.('input, textarea, select, [contenteditable], .plain, .search, .hint');
-  stage.addEventListener('pointerdown', (e) => {
-    if (e.pointerType === 'mouse' && e.button !== 0) return;
-    dragged = false;
-    ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
-    if (ptrs.size === 1) drag = { id: e.pointerId, x: e.clientX, y: e.clientY, moved: false };
-    else if (ptrs.size === 2) {
-      const [p, q] = [...ptrs.values()];
-      pinch = { d: Math.hypot(p.x - q.x, p.y - q.y) };
-      drag = null;
-      dragged = true;
-    }
-  });
-  stage.addEventListener('pointermove', (e) => {
-    if (e.pointerType === 'mouse') {
-      pointer.x = (e.clientX / vw) * 2 - 1;
-      pointer.y = -(e.clientY / vh) * 2 + 1;
-      pointer.active = true;
-      pointer.at = now;
-    }
-    const p = ptrs.get(e.pointerId);
-    if (!p) return;
-    const px = p.x, py = p.y;
-    p.x = e.clientX; p.y = e.clientY;
-    if (pinch && ptrs.size >= 2) {
-      const [a, b] = [...ptrs.values()];
-      const d = Math.hypot(a.x - b.x, a.y - b.y);
+  if (!scroll) {
+    const ptrs = new Map();
+    let drag = null, pinch = null, dragged = false;
+    const inUi = (t) => !!t?.closest?.('input, textarea, select, [contenteditable], .plain, .search, .hint');
+    stage.addEventListener('pointerdown', (e) => {
+      if (e.pointerType === 'mouse' && e.button !== 0) return;
+      dragged = false;
+      ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (ptrs.size === 1) drag = { id: e.pointerId, x: e.clientX, y: e.clientY, moved: false };
+      else if (ptrs.size === 2) {
+        const [p, q] = [...ptrs.values()];
+        pinch = { d: Math.hypot(p.x - q.x, p.y - q.y) };
+        drag = null;
+        dragged = true;
+      }
+    });
+    stage.addEventListener('pointermove', (e) => {
+      if (e.pointerType === 'mouse') {
+        pointer.x = (e.clientX / vw) * 2 - 1;
+        pointer.y = -(e.clientY / vh) * 2 + 1;
+        pointer.active = true;
+        pointer.at = now;
+      }
+      const p = ptrs.get(e.pointerId);
+      if (!p) return;
+      const px = p.x, py = p.y;
+      p.x = e.clientX; p.y = e.clientY;
+      if (pinch && ptrs.size >= 2) {
+        const [a, b] = [...ptrs.values()];
+        const d = Math.hypot(a.x - b.x, a.y - b.y);
+        takeover();
+        ctl.pend = clamp(ctl.pend + (d - pinch.d) * 6, -5000, 5000);
+        pinch.d = d;
+        return;
+      }
+      if (!drag || drag.id !== e.pointerId) return;
+      if (!drag.moved) {
+        if (Math.hypot(e.clientX - drag.x, e.clientY - drag.y) < (e.pointerType === 'mouse' ? 4 : 9)) return;
+        drag.moved = true;
+        dragged = true;
+        takeover();
+        stage.classList.add('is-dragging');
+        try { stage.setPointerCapture(e.pointerId); } catch { /* fine */ }
+      }
+      const k = (FOV * DEG) / vh;
+      ctl.tyaw += (e.clientX - px) * k;
+      ctl.tpitch = clamp(ctl.tpitch + (e.clientY - py) * k, -1.45, 1.45);
+    });
+    const lift = (e) => {
+      ptrs.delete(e.pointerId);
+      if (ptrs.size < 2) pinch = null;
+      if (drag && drag.id === e.pointerId) drag = null;
+      if (!ptrs.size) stage.classList.remove('is-dragging');
+    };
+    stage.addEventListener('pointerup', lift);
+    stage.addEventListener('pointercancel', lift);
+    stage.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse') pointer.active = false; });
+    // a drag that ends over a link must not follow it
+    stage.addEventListener('click', (e) => {
+      if (dragged) { e.preventDefault(); e.stopPropagation(); dragged = false; }
+    }, true);
+    stage.addEventListener('click', (e) => {
+      const t = e.target;
+      if (t.closest('a')) { stopTour(); return; } // a real link: the browser has it
+      if (t.closest('.grunt')) return;
+      const ft = t.closest('.ftitle');
+      if (ft) { showCluster(ft.dataset.cluster); return; }
+      const card = t.closest('.card');
+      if (card) { focusNode(card.dataset.node); return; }
+      setFocus(null);
+    });
+    stage.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      let dy = e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? vh : 1);
+      if (e.ctrlKey) dy *= 4; // a trackpad pinch
       takeover();
-      ctl.pend = clamp(ctl.pend + (d - pinch.d) * 6, -5000, 5000);
-      pinch.d = d;
-      return;
-    }
-    if (!drag || drag.id !== e.pointerId) return;
-    if (!drag.moved) {
-      if (Math.hypot(e.clientX - drag.x, e.clientY - drag.y) < (e.pointerType === 'mouse' ? 4 : 9)) return;
-      drag.moved = true;
-      dragged = true;
-      takeover();
-      stage.classList.add('is-dragging');
-      try { stage.setPointerCapture(e.pointerId); } catch { /* fine */ }
-    }
-    const k = (FOV * DEG) / vh;
-    ctl.tyaw += (e.clientX - px) * k;
-    ctl.tpitch = clamp(ctl.tpitch + (e.clientY - py) * k, -1.45, 1.45);
-  });
-  const lift = (e) => {
-    ptrs.delete(e.pointerId);
-    if (ptrs.size < 2) pinch = null;
-    if (drag && drag.id === e.pointerId) drag = null;
-    if (!ptrs.size) stage.classList.remove('is-dragging');
-  };
-  stage.addEventListener('pointerup', lift);
-  stage.addEventListener('pointercancel', lift);
-  stage.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse') pointer.active = false; });
-  // a drag that ends over a link must not follow it
-  stage.addEventListener('click', (e) => {
-    if (dragged) { e.preventDefault(); e.stopPropagation(); dragged = false; }
-  }, true);
-  stage.addEventListener('click', (e) => {
-    const t = e.target;
-    if (t.closest('a')) { stopTour(); return; } // a real link: the browser has it
-    if (t.closest('.grunt')) return;
-    const ft = t.closest('.ftitle');
-    if (ft) { showCluster(ft.dataset.cluster); return; }
-    const card = t.closest('.card');
-    if (card) { focusNode(card.dataset.node); return; }
-    setFocus(null);
-  });
-  stage.addEventListener('wheel', (e) => {
-    e.preventDefault();
-    let dy = e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? vh : 1);
-    if (e.ctrlKey) dy *= 4; // a trackpad pinch
-    takeover();
-    ctl.pend = clamp(ctl.pend - dy * 2.6, -5000, 5000);
-  }, { passive: false });
-  let gs = 1;
-  stage.addEventListener('gesturestart', (e) => { e.preventDefault(); gs = 1; });
-  stage.addEventListener('gesturechange', (e) => { e.preventDefault(); takeover(); ctl.pend += (e.scale - gs) * 1400; gs = e.scale; });
-  const MOVE = new Set(['w', 'a', 's', 'd', 'q', 'e', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'shift']);
-  addEventListener('keydown', (e) => {
-    if (e.metaKey || e.ctrlKey || e.altKey || inUi(e.target)) return;
-    const key = e.key.toLowerCase();
-    if (!MOVE.has(key)) return;
-    if (key.startsWith('arrow')) e.preventDefault();
-    if (key !== 'shift') takeover();
-    ctl.keys.add(key);
-  });
-  addEventListener('keyup', (e) => {
-    const key = e.key.toLowerCase();
-    ctl.keys.delete(key);
-    if (key === 'shift') { ctl.keys.delete('shift'); }
-  });
-  addEventListener('blur', () => ctl.keys.clear());
+      ctl.pend = clamp(ctl.pend - dy * 2.6, -5000, 5000);
+    }, { passive: false });
+    let gs = 1;
+    stage.addEventListener('gesturestart', (e) => { e.preventDefault(); gs = 1; });
+    stage.addEventListener('gesturechange', (e) => { e.preventDefault(); takeover(); ctl.pend += (e.scale - gs) * 1400; gs = e.scale; });
+    const MOVE = new Set(['w', 'a', 's', 'd', 'q', 'e', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'shift']);
+    addEventListener('keydown', (e) => {
+      if (e.metaKey || e.ctrlKey || e.altKey || inUi(e.target)) return;
+      const key = e.key.toLowerCase();
+      if (!MOVE.has(key)) return;
+      if (key.startsWith('arrow')) e.preventDefault();
+      if (key !== 'shift') takeover();
+      ctl.keys.add(key);
+    });
+    addEventListener('keyup', (e) => {
+      const key = e.key.toLowerCase();
+      ctl.keys.delete(key);
+      if (key === 'shift') { ctl.keys.delete('shift'); }
+    });
+    addEventListener('blur', () => ctl.keys.clear());
+  }
 
   /* ── grunts ── */
   const spots = clusters.map((cl) => ({ id: cl.id, c: cl.fc, right: cl.right, up: cl.up, n: cl.n, hw: cl.fw / 2, hh: cl.fh / 2 }));
   let grunts = null;
   try {
-    grunts = createGrunts({ THREE, CSS3DObject, scene: cssScene, camera, spots, reduce, touch });
+    grunts = createGrunts({ THREE, CSS3DObject, scene: cssScene, camera, spots, reduce, touch, guide: !scroll });
   } catch (err) {
     grunts = null; // the map is still the map without them
   }
@@ -822,6 +955,8 @@ export async function createWorld({ stage, reduce = false, touch = false, onTour
       const dc = tmpV.length();
       const facing = Math.abs(tmpV.dot(f.cl.n)) / Math.max(dc, 1);
       let a = (1 - 0.9 * sstep(FAR[0], FAR[1], dc)) * sstep(90, 320, zmin) * sstep(0.25, 0.62, facing);
+      // near-opaque night paper would turn far boards into grey slabs: let them go sooner
+      if (dark) a *= 1 - 0.94 * sstep(1300, 3400, dc);
       if (f.pseudo) a *= 0.75;
       f.alpha = a > 0.02 ? a : 0;
       if (!f.alpha) continue;
@@ -911,22 +1046,36 @@ export async function createWorld({ stage, reduce = false, touch = false, onTour
     const m = camera.matrixWorldInverse;
     for (const p of pills) { p.v.copy(p.pos).applyMatrix4(m); place(p, fadeOf(p.v, p.w, p.h, null) * 0.95, ease); }
   }
+  let blobK = dark ? 1.7 : 1; // the palette glows a little brighter at night
+  function setDark(on) {
+    dark = !!on;
+    blobK = dark ? 1.7 : 1;
+    for (const f of frames) {
+      const pp = paper(f.cl, dark);
+      f.u.uFill.value.set(...pp.fill); f.u.uFillA.value = pp.fillA;
+      f.u.uBarC.value.set(...pp.bar); f.u.uLine.value.set(...pp.line);
+    }
+    stale = true;
+  }
   function updateBlobs() {
     for (const b of blobs) {
       const d = b.sp.position.distanceTo(camera.position);
-      b.sp.material.opacity = b.o * sstep(b.s * 0.18, b.s * 0.5, d);
+      b.sp.material.opacity = b.o * blobK * sstep(b.s * 0.18, b.s * 0.5, d);
     }
   }
 
   let intro = null;
   function tick(dt) {
-    if (intro && intro.frames-- <= 0) {
-      const home = stopShot(me);
-      intro = null;
-      if (!reduce) flyTo(home.pos, home.look, { dur: 2.5, arc: 0.04, ease: easeOut, onDone: () => grunts?.setGuideMood('happy') });
+    if (scroll) followPath();
+    else {
+      if (intro && intro.frames-- <= 0) {
+        const home = stopShot(me);
+        intro = null;
+        if (!reduce) flyTo(home.pos, home.look, { dur: 2.5, arc: 0.04, ease: easeOut, onDone: () => grunts?.setGuideMood('happy') });
+      }
+      updateTour();
+      updateControls(dt);
     }
-    updateTour();
-    updateControls(dt);
     camera.position.copy(ctl.pos);
     camera.rotation.set(ctl.pitch, ctl.yaw, 0, 'YXZ');
     camera.updateMatrixWorld();
@@ -946,9 +1095,10 @@ export async function createWorld({ stage, reduce = false, touch = false, onTour
 
   // start: far out, then in to the name. reduced motion starts there
   const home = stopShot(me);
-  if (reduce) setPose(home.pos, home.look);
+  if (scroll) { buildPath(); followPath(); }
+  else if (reduce) setPose(home.pos, home.look);
   else {
-    setPose(new V3(2400, 2300, 15500), new V3(0, 0, 0));
+    setPose(START.pos, START.look);
     intro = { frames: 3 };
   }
   camera.position.copy(ctl.pos);
@@ -970,11 +1120,14 @@ export async function createWorld({ stage, reduce = false, touch = false, onTour
   }
   const run = () => { if (!raf) { last = 0; raf = requestAnimationFrame(loop); } };
   const halt = () => { cancelAnimationFrame(raf); raf = 0; };
-  document.addEventListener('visibilitychange', () => (document.hidden ? halt() : run()));
-  if (!document.hidden) run();
+  // free mode draws whenever the tab is visible; in scroll mode the section decides (start / stop)
+  if (!scroll) {
+    document.addEventListener('visibilitychange', () => (document.hidden ? halt() : run()));
+    if (!document.hidden) run();
+  }
 
-  addEventListener('resize', () => {
-    vw = innerWidth; vh = innerHeight;
+  function resize() {
+    [vw, vh] = viewSize();
     camera.aspect = vw / vh;
     camera.updateProjectionMatrix();
     tanH = tanV * camera.aspect;
@@ -982,7 +1135,40 @@ export async function createWorld({ stage, reduce = false, touch = false, onTour
     css.setSize(vw, vh);
     lineMat.uniforms.uRes.value.set(vw * dpr, vh * dpr);
     dotMat.uniforms.uScale.value = (vh * dpr) / 2 / tanV;
-  });
+  }
+  if (!scroll) addEventListener('resize', resize);
+  else {
+    // the stage, not the window: the shots are framed for its size, so the flight is re-planned too
+    let seen = `${vw}x${vh}`;
+    const ro = new ResizeObserver(() => {
+      const [w, h] = viewSize();
+      if (!w || !h || `${w}x${h}` === seen) return;
+      seen = `${w}x${h}`;
+      resize();
+      buildPath();
+      if (!raf) stale = true; // the canvas was cleared; start() or renderOnce() draws it again
+    });
+    ro.observe(stage);
+  }
+
+  if (scroll) {
+    // the fly-through's controls. nothing here listens to the page; js/fly.js calls in
+    return {
+      start: () => { run(); stale = false; },
+      stop: halt,
+      setRunning: (on) => (on ? (run(), (stale = false)) : halt()),
+      setProgress: (p) => { path.p = clamp(+p || 0, 0, 1); },
+      setDark,
+      renderOnce: () => { if (!raf) { now = performance.now() / 1000; tick(0); stale = false; } },
+      get running() { return !!raf; },
+      get progress() { return path.p; },
+      get stale() { return stale; },
+      // where the boards sit along the flight, for the section's captions and tools/shots-fly.mjs
+      get stops() { return path.stops.map((s) => ({ id: s.id, title: s.title, at: +s.at.toFixed(4) })); },
+      get pose() { return { pos: ctl.pos.toArray().map(Math.round), yaw: +ctl.yaw.toFixed(3), pitch: +ctl.pitch.toFixed(3) }; },
+      perf() { const r = perf.n ? perf.ms / perf.n : 0; perf.ms = 0; perf.n = 0; return r; },
+    };
+  }
 
   const api = {
     focusNode,

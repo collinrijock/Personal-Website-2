@@ -14,13 +14,18 @@
 <link rel="stylesheet" href="css/site.css">
 <link rel="stylesheet" href="css/board.css">
 <link rel="stylesheet" href="css/before.css">
+<link rel="stylesheet" href="css/fly.css">
 <link rel="stylesheet" href="css/nda.css">
-<script type="importmap">{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.174.0/build/three.module.min.js" } }</script>
+<script type="importmap">{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.174.0/build/three.module.min.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.174.0/examples/jsm/"
+} }</script>
 <script>document.documentElement.classList.add('js');</script>
 <script type="module" src="js/main.js"></script>
 <script type="module" src="js/grunts.js"></script>
 <script type="module" src="js/board.js"></script>
 <script type="module" src="js/nda.js"></script>
+<script type="module" src="js/fly.js"></script>
 </head>
 <body>
 <svg hidden aria-hidden="true" xmlns="http://www.w3.org/2000/svg" style="display:none;position:absolute;width:0;height:0">
@@ -45,7 +50,7 @@
   <nav class="nav wrap" aria-label="site">
     <a class="me" href="./">collin rijock</a>
     <div class="nav-links">
-      <a href="map.html"><svg class="ico" aria-hidden="true"><use href="#i-map"/></svg>map</a>
+      <a href="#fly"><svg class="ico" aria-hidden="true"><use href="#i-map"/></svg>map</a>
       <a href="https://app.collinrijock.com/blog"><svg class="ico" aria-hidden="true"><use href="#i-pen"/></svg>writing</a>
       <a href="https://github.com/collinrijock"><svg class="ico" aria-hidden="true"><use href="#i-github"/></svg>github</a>
       <a href="https://x.com/CollinRijock"><svg class="ico" aria-hidden="true"><use href="#i-x"/></svg>x</a>
@@ -58,7 +63,7 @@
     <h1 data-lift>collin rijock</h1>
     <p class="lede" data-lift>i love building software, and i'm getting into building hardware.</p>
     <p class="cta" data-lift>
-      <a class="pill" href="map.html"><svg class="ico" aria-hidden="true"><use href="#i-map"/></svg>fly through the map <span aria-hidden="true">→</span></a>
+      <a class="pill" href="#fly"><svg class="ico" aria-hidden="true"><use href="#i-map"/></svg>fly through the map <span aria-hidden="true">→</span></a>
       <a class="pill ghost" href="https://x.com/CollinRijock"><svg class="ico" aria-hidden="true"><use href="#i-x"/></svg>@CollinRijock</a>
     </p>
   </div>
@@ -71,110 +76,143 @@
   <span class="grunt g-hero" data-grunt="collin:site:5" data-size="112" data-move="drift" data-moods="playful,curious,happy,orbit"></span>
 </header>
 
-<!-- the canvas: the site's own copy on a board, being sorted, written and wired up by (simulated) agents -->
-<section class="canvas-sec" aria-labelledby="h-canvas">
-  <div class="wrap canvas-head">
+<!-- the canvas: the whole middle of the page. the site's own copy on a board, the articles included,
+     being sorted, written and wired up by (simulated) agents. js/board.js lifts each [data-art]
+     article into a frame; without javascript they read as a plain column. -->
+<section class="canvas-sec" id="canvas" aria-labelledby="h-canvas">
+  <div class="canvas-head">
     <div data-rise>
       <h2 id="h-canvas" class="label"><i style="--dot: var(--c1)"></i>the canvas</h2>
       <p class="canvas-title">i work with a lot of agents on one shared canvas.</p>
     </div>
     <div class="canvas-aside" data-rise>
-      <p>this is the site on a board. agents are sorting the inbox, writing notes and wiring ideas together. the cursors are simulated. grab a card to help.</p>
-      <a class="more" href="map.html"><svg class="ico" aria-hidden="true"><use href="#i-map"/></svg>fly through it in 3d <span aria-hidden="true">→</span></a>
+      <p>this whole site is one board. agents sort the inbox, write notes and wire ideas together while you read. the cursors are simulated. grab a card to help.</p>
+      <a class="more" href="#fly"><svg class="ico" aria-hidden="true"><use href="#i-map"/></svg>fly through it in 3d <span aria-hidden="true">↓</span></a>
     </div>
   </div>
   <div class="board-wrap" data-rise="soft">
-    <div class="board" data-board role="region" aria-label="a canvas of this site's notes, with simulated agent cursors">
-      <noscript><p class="board-nojs">the canvas needs javascript. <a href="map.html">here it is as a list</a>.</p></noscript>
+    <div class="board" data-board role="region" aria-label="a canvas of this site, with simulated agent cursors">
+      <div class="arts">
+        <article class="art art-vision" data-art="vision" data-color="yellow" aria-labelledby="h-vision">
+          <h2 class="ft" id="h-vision"><span>how i build</span></h2>
+          <div class="art-body">
+            <p class="line">i love building software.</p>
+            <p class="line">i build a lot of it, with a lot of agents.<span class="grunt g-atoms" data-grunt="collin:site:4" data-size="64" data-state="working" data-tool="hammer" data-move="bob" data-moods="working,proud"></span></p>
+            <p class="line soft">and i'm getting into building hardware.</p>
+            <p class="line grad">climb the mountain.</p>
+          </div>
+        </article>
+        <article class="art art-duo" data-art="exowatt" data-color="blue" aria-labelledby="h-exowatt">
+          <span class="grunt g-perch" data-grunt="collin:site:2" data-size="62" data-move="bob" data-moods="curious,happy,wink"></span>
+          <p class="ft"><span>now</span></p>
+          <div class="art-body">
+            <h2 class="art-h" id="h-exowatt">exowatt</h2>
+            <p>lead software engineer, and the second software hire. exowatt makes 24-hour solar for ai data centers: sunlight in, heat stored, electricity on demand. i build the software the company and its energy sites run on.</p>
+            <a class="more" href="https://exowatt.com"><svg class="ico" aria-hidden="true"><use href="#i-sun"/></svg>exowatt.com <span aria-hidden="true">→</span></a>
+          </div>
+        </article>
+        <article class="art art-duo" data-art="charles" data-color="purple" aria-labelledby="h-charles">
+          <p class="ft"><span>on the side</span></p>
+          <div class="art-body">
+            <h2 class="art-h" id="h-charles">super charles</h2>
+            <p>my life on one postgres db. tasks, calendar, health and money, with agents that do the work. it runs on a mac mini at home.</p>
+            <a class="more" href="https://app.collinrijock.com"><svg class="ico" aria-hidden="true"><use href="#i-site"/></svg>app.collinrijock.com <span aria-hidden="true">→</span></a>
+          </div>
+        </article>
+        <article class="art art-before" data-art="before" data-color="gray" aria-labelledby="h-before">
+          <h2 class="ft" id="h-before"><span>before</span></h2>
+          <div class="art-body">
+            <figure class="photo">
+              <img src="img/nyse.jpg" alt="the metaprop accelerator cohort on the trading floor of the new york stock exchange. collin is front row, fourth from the left." width="1600" height="1000" loading="lazy" decoding="async" draggable="false">
+              <figcaption><span>on the floor of the new york stock exchange, with the metaprop cohort.</span><small>nyc · mar 2025</small></figcaption>
+              <p class="photo-note">photo: metaprop</p>
+            </figure>
+            <div class="stints-col">
+            <p class="art-h lead">early engineer at three startups, and a research lab at fiu.</p>
+            <div class="stints">
+              <section class="stint">
+                <div class="stint-head"><h3>buildrfi</h3><span class="when">2024 → 2025</span></div>
+                <p class="what">a proptech startup in miami. lending and payments for construction subcontractors.</p>
+                <div class="stint-tags"><span class="tag" style="--tag: var(--c1)">techstars</span><span class="tag" style="--tag: var(--c0)">metaprop accelerator</span><span class="tag" style="--tag: var(--c3)">first engineer</span></div>
+                <p><b>took a contractor lending product from zero to live loans.</b> wired plaid, stripe and quickbooks into an ai underwriting engine, and shipped a claude-powered parser that pulls structured data out of contracts, invoices and bills. owned the whole stack.</p>
+              </section>
+              <section class="stint">
+                <div class="stint-head"><h3>lula</h3><span class="when">2022 → 2024</span></div>
+                <p class="what">miami insurtech, "stripe for insurance." insurance and risk tools for fleets.</p>
+                <div class="stint-tags"><span class="tag" style="--tag: var(--c1)">early engineer</span><span class="tag" style="--tag: var(--c2)">through the series b</span></div>
+                <p><b>built a lot of the first platform.</b> owned onboarding and add-vehicle, the two highest-traffic flows, then led automated underwriting: a rules engine and an internal vehicle portal that ops actually used.</p>
+              </section>
+              <section class="stint">
+                <div class="stint-head"><h3>kabcash</h3><span class="when">2021</span></div>
+                <p class="what">mexico city fintech. a virtual card and buy-now-pay-later for people the banks skip.</p>
+                <div class="stint-tags"><span class="tag" style="--tag: var(--c3)">founding engineer</span><span class="tag" style="--tag: var(--c4)">miami hack week</span></div>
+                <p><b>built the react native app in college</b> with ex-stripe and ex-meta founders, owned payments on the backend, and shipped it to the app store.</p>
+              </section>
+              <section class="stint">
+                <div class="stint-head"><h3>fiu applied research center</h3><span class="when">2021</span></div>
+                <p class="what">fiu's applied research unit. ai, cyber, defense.</p>
+                <div class="stint-tags"><span class="tag" style="--tag: var(--c2)">ml engineer</span></div>
+                <p><b>lstm anomaly detection on navy sensor data.</b> catching bad actors, and generating adversarial data to stress the baselines.</p>
+              </section>
+            </div>
+            </div>
+          </div>
+        </article>
+      </div>
+      <noscript><p class="board-nojs">the rest of the canvas (the things i've made, ideas, writing) needs javascript. <a href="map.html">here it is as a list</a>.</p></noscript>
     </div>
   </div>
-  <p class="nda-line wrap" data-rise><svg class="ico" aria-hidden="true"><use href="#i-lock"/></svg>some of my work isn't public yet, from exowatt and my own projects. <a href="/nda" data-nda-open>request access <span aria-hidden="true">→</span></a></p>
 </section>
 
-<main class="wrap">
-  <section class="manifesto" aria-labelledby="h-vision">
-    <h2 id="h-vision" class="label" data-rise><i style="--dot: var(--c3)"></i>how i build</h2>
-    <p class="line" data-rise>i love building software.</p>
-    <p class="line" data-rise>i build a lot of it, with a lot of agents.<span class="grunt g-atoms" data-grunt="collin:site:4" data-size="68" data-state="working" data-tool="hammer" data-move="bob" data-moods="working,proud"></span></p>
-        <p class="line soft" data-rise>and i'm getting into building hardware.</p>
-    <p class="line grad" data-rise>climb the mountain.</p>
-  </section>
+<!-- fly:start · the 3d fly-through and the get-in-touch call to action (js/fly.js, css/fly.css).
+     a tall track with a sticky stage: scroll flies the camera through the map, then "say hi." lands.
+     without javascript (or webgl) it's a plain section: the call to action over css colour. -->
+<section class="fly" id="fly" aria-labelledby="h-fly" data-fly>
+  <div class="fly-track">
+    <div class="fly-stage">
+      <div class="fly-sky" aria-hidden="true"></div>
+      <div class="fly-world" aria-hidden="true" inert><div class="fly-mount"></div></div>
+      <div class="fly-wash" aria-hidden="true"></div>
 
-  <section class="duo" aria-label="what i do">
-    <article data-rise>
-      <span class="grunt g-perch" data-grunt="collin:site:2" data-size="66" data-move="bob" data-moods="curious,happy,wink"></span>
-      <p class="label"><i style="--dot: var(--c1)"></i>now</p>
-      <h2>exowatt</h2>
-      <p>lead software engineer, and the second software hire. exowatt makes 24-hour solar for ai data centers: sunlight in, heat stored, electricity on demand. i build the software the company and its energy sites run on.</p>
-      <a class="more" href="https://exowatt.com"><svg class="ico" aria-hidden="true"><use href="#i-sun"/></svg>exowatt.com <span aria-hidden="true">→</span></a>
-    </article>
-    <article data-rise>
-      <p class="label"><i style="--dot: var(--c2)"></i>on the side</p>
-      <h2>super charles</h2>
-      <p>my life on one postgres db. tasks, calendar, health and money, with agents that do the work. it runs on a mac mini at home.</p>
-      <a class="more" href="https://app.collinrijock.com"><svg class="ico" aria-hidden="true"><use href="#i-site"/></svg>app.collinrijock.com <span aria-hidden="true">→</span></a>
-    </article>
-  </section>
+      <header class="fly-head wrap">
+        <h2 id="h-fly" class="label"><i style="--dot: var(--c2)"></i>the map</h2>
+        <p class="fly-title">everything here, as a brainstorm you can fly through.</p>
+        <p class="fly-go" aria-hidden="true"><span>scroll to fly</span><i></i></p>
+      </header>
 
-  <section class="before" aria-labelledby="h-before">
-    <h3 id="h-before" class="label" data-rise><i style="--dot: var(--c2)"></i>before</h3>
-    <div class="before-grid">
-      <div class="stints">
-        <article class="stint" data-rise>
-          <div class="stint-head"><h3>buildrfi</h3><span class="when">2024 → 2025</span></div>
-          <p class="what">a proptech startup in miami. lending and payments for construction subcontractors.</p>
-          <div class="stint-tags"><span class="tag" style="--tag: var(--c1)">techstars</span><span class="tag" style="--tag: var(--c0)">metaprop accelerator</span><span class="tag" style="--tag: var(--c3)">first engineer</span></div>
-          <p><b>took a contractor lending product from zero to live loans.</b> wired plaid, stripe and quickbooks into an ai underwriting engine, and shipped a claude-powered parser that pulls structured data out of contracts, invoices and bills. owned the whole stack.</p>
-        </article>
-        <article class="stint" data-rise>
-          <div class="stint-head"><h3>lula</h3><span class="when">2022 → 2024</span></div>
-          <p class="what">miami insurtech, "stripe for insurance." insurance and risk tools for fleets.</p>
-          <div class="stint-tags"><span class="tag" style="--tag: var(--c1)">early engineer</span><span class="tag" style="--tag: var(--c2)">through the series b</span></div>
-          <p><b>built a lot of the first platform.</b> owned onboarding and add-vehicle, the two highest-traffic flows, then led automated underwriting: a rules engine and an internal vehicle portal that ops actually used.</p>
-        </article>
-        <article class="stint" data-rise>
-          <div class="stint-head"><h3>kabcash</h3><span class="when">2021</span></div>
-          <p class="what">mexico city fintech. a virtual card and buy-now-pay-later for people the banks skip.</p>
-          <div class="stint-tags"><span class="tag" style="--tag: var(--c3)">founding engineer</span><span class="tag" style="--tag: var(--c4)">miami hack week</span></div>
-          <p><b>built the react native app in college</b> with ex-stripe and ex-meta founders, owned payments on the backend, and shipped it to the app store.</p>
-        </article>
-        <article class="stint" data-rise>
-          <div class="stint-head"><h3>fiu applied research center</h3><span class="when">2021</span></div>
-          <p class="what">fiu's applied research unit. ai, cyber, defense.</p>
-          <div class="stint-tags"><span class="tag" style="--tag: var(--c2)">ml engineer</span></div>
-          <p><b>lstm anomaly detection on navy sensor data.</b> catching bad actors, and generating adversarial data to stress the baselines.</p>
-        </article>
-      </div>
-      <div class="photo" data-rise>
-        <figure>
-          <img src="img/nyse.jpg" alt="the metaprop accelerator cohort on the trading floor of the new york stock exchange. collin is front row, fourth from the left." width="1600" height="1000" loading="lazy" decoding="async">
-          <figcaption><span>on the floor of the new york stock exchange, with the metaprop cohort.</span><small>nyc · mar 2025</small></figcaption>
-        </figure>
-        <p class="photo-note">photo: metaprop</p>
+      <p class="fly-now" aria-hidden="true"><span class="fly-n"></span><span class="fly-t"></span></p>
+
+      <div class="fly-cta" id="say-hi">
+        <div class="fly-land">
+          <p class="label"><i style="--dot: var(--c0)"></i>get in touch</p>
+          <div class="say-row">
+            <h2 class="say" id="h-say">say hi.</h2>
+            <span class="grunt g-wave" data-grunt="collin:site:1" data-size="92" data-move="bob" data-state="happy" data-moods="excited,laughing,celebrate,wink"></span>
+          </div>
+          <p class="fly-sub">questions, ideas, or just hello. email is best.</p>
+          <p class="say-links">
+            <a class="fly-mail" href="mailto:collin@rijock.com"><svg class="ico" aria-hidden="true"><use href="#i-mail"/></svg>collin@rijock.com</a>
+            <a href="https://x.com/CollinRijock"><svg class="ico" aria-hidden="true"><use href="#i-x"/></svg>x / twitter</a>
+            <a href="https://github.com/collinrijock"><svg class="ico" aria-hidden="true"><use href="#i-github"/></svg>github</a>
+            <a href="https://www.linkedin.com/in/collin-rijock/"><svg class="ico" aria-hidden="true"><use href="#i-in"/></svg>linkedin</a>
+          </p>
+          <div class="fly-foot">
+            <p class="cta-nda"><svg class="ico" aria-hidden="true"><use href="#i-lock"/></svg>some of my work isn't public yet. <button type="button" class="cta-nda-btn" data-nda-open><span class="lbl">request access</span> <span aria-hidden="true">→</span></button></p>
+            <a class="more" href="map.html"><svg class="ico" aria-hidden="true"><use href="#i-map"/></svg>fly it yourself <span aria-hidden="true">→</span></a>
+          </div>
+        </div>
       </div>
     </div>
-  </section>
-
-</main>
+  </div>
+</section>
+<!-- fly:end -->
 
 <footer class="foot wrap">
-  <div class="say-row" data-rise>
-    <p class="say">say hi.</p>
-    <span class="grunt g-wave" data-grunt="collin:site:1" data-size="92" data-move="bob" data-state="happy" data-moods="excited,laughing,celebrate,wink"></span>
-  </div>
-  <p class="say-links" data-rise>
-    <a href="mailto:collin@rijock.com"><svg class="ico" aria-hidden="true"><use href="#i-mail"/></svg>collin@rijock.com</a>
-    <a href="https://x.com/CollinRijock"><svg class="ico" aria-hidden="true"><use href="#i-x"/></svg>x / twitter</a>
-    <a href="https://github.com/collinrijock"><svg class="ico" aria-hidden="true"><use href="#i-github"/></svg>github</a>
-    <a href="https://www.linkedin.com/in/collin-rijock/"><svg class="ico" aria-hidden="true"><use href="#i-in"/></svg>linkedin</a>
-    <a href="https://app.collinrijock.com/blog"><svg class="ico" aria-hidden="true"><use href="#i-pen"/></svg>writing</a>
-    <a href="map.html"><svg class="ico" aria-hidden="true"><use href="#i-map"/></svg>the map</a>
-  </p>
-  <p class="fine" data-rise>© 2026 collin rijock · the colour is three.js, drawn live · the little guys are agents · <a href="llms.txt"><svg class="ico" aria-hidden="true"><use href="#i-doc"/></svg>llms.txt</a></p>
+  <p class="fine">© 2026 collin rijock · <a href="https://app.collinrijock.com/blog"><svg class="ico" aria-hidden="true"><use href="#i-pen"/></svg>writing</a> · <a href="map.html"><svg class="ico" aria-hidden="true"><use href="#i-map"/></svg>the map</a> · <a href="llms.txt"><svg class="ico" aria-hidden="true"><use href="#i-doc"/></svg>llms.txt</a> · the colour is three.js, drawn live · the little guys are agents</p>
 </footer>
 
-<!-- rides the horizon once the hero is gone; it's a door to the map -->
-<a class="grunt-guide" href="map.html" aria-label="fly through the map">
+<!-- rides the horizon between the hero and the canvas; it's a door to the 3d section -->
+<a class="grunt-guide" href="#fly" aria-label="fly through the map">
   <span class="grunt" data-grunt="collin:site:6" data-size="64" data-move="bob" data-moods="happy,curious,wink,playful"></span>
   <span class="guide-say">fly the map?</span>
 </a>
@@ -198,7 +236,7 @@
         <legend>what are you most interested in? <em>optional</em></legend>
         <div class="nda-ichips">
           <label class="nda-ichip"><input type="checkbox" name="interests" value="exowatt"><span>exowatt</span></label>
-          <label class="nda-ichip"><input type="checkbox" name="interests" value="grunts"><span>grunts</span></label>
+          <label class="nda-ichip"><input type="checkbox" name="interests" value="grunts"><span>agents</span></label>
           <label class="nda-ichip"><input type="checkbox" name="interests" value="personal"><span>personal projects</span></label>
           <label class="nda-ichip"><input type="checkbox" name="interests" value="previous"><span>previous employers</span></label>
         </div>
