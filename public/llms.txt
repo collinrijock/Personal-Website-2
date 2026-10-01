@@ -2,7 +2,7 @@
 
 > software engineer in miami. lead software engineer at exowatt. i love building software, and i'm getting into building hardware.
 
-the front page is a hero, then one big shared canvas (the sections below as articles, plus the things i've made, ideas and writing, with simulated agent cursors sorting and wiring it up), then a 3d fly-through of the same content that ends in "say hi."
+the front page is a hero, then one big shared canvas: a map of regions and cards you pan and zoom (everything below as stickies, quotes, link cards and chips, with simulated agent cursors sorting and wiring it up), then a 3d fly-through of the same content that ends in "say hi."
 
 - email: collin@rijock.com
 - x / twitter: https://x.com/CollinRijock
