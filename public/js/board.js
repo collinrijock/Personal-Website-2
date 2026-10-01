@@ -38,19 +38,19 @@ const fw = (cols) => 32 + (cols - 1) * CELL + CW; // a region's width for n colu
 const META = {
   vision: { title: 'how i build', color: 'yellow' },
   now: { title: 'now · exowatt', color: 'blue' },
-  charles: { title: 'on the side · super charles', color: 'purple' },
-  xmade: { title: "things i've made · at exowatt", color: 'blue' },
-  own: { title: "things i've made · on my own time", color: 'pink' },
+  charles: { title: 'on the side · super charles', big: 'super charles', color: 'purple' },
+  xmade: { title: "things i've made · at exowatt", big: 'made at exowatt', color: 'blue' },
+  own: { title: "things i've made · on my own time", big: 'made on my own time', color: 'pink' },
   inbox: { title: 'inbox', color: 'gray', inbox: true },
   nda: { title: "things i've made · under nda", color: 'lock', locked: true },
-  'b-buildrfi': { title: 'before · buildrfi', color: 'white' },
-  'b-lula': { title: 'before · lula', color: 'white' },
-  'b-kabcash': { title: 'before · kabcash', color: 'white' },
-  'b-fiu': { title: 'before · fiu research', color: 'white' },
+  'b-buildrfi': { title: 'before · buildrfi', big: 'buildrfi', color: 'white' },
+  'b-lula': { title: 'before · lula', big: 'lula', color: 'white' },
+  'b-kabcash': { title: 'before · kabcash', big: 'kabcash', color: 'white' },
+  'b-fiu': { title: 'before · fiu research', big: 'fiu', color: 'white' },
   writing: { title: 'writing', color: 'gray' },
   games: { title: 'games i make', color: 'purple' },
   links: { title: 'find me', color: 'white' },
-  ideas: { title: 'ideas i keep coming back to', color: 'green' },
+  ideas: { title: 'ideas i keep coming back to', big: 'ideas', color: 'green' },
   stack: { title: 'tools', color: 'white', logos: true }, // a tighter grid: the cards are 96px logos
 };
 // wide: row one is the reading row (how i build, now, on the side) with the made
@@ -163,8 +163,11 @@ function buildFrames() {
     Object.assign(f.el.style, { left: `${f.x}px`, top: `${f.y}px`, width: `${f.w}px`, height: `${f.h}px` });
     if (f.locked) f.el.innerHTML = lockedFrame(f);
     else {
-      // the title bar, plus the same title big, for when you're zoomed out (css shows one or the other)
-      f.el.innerHTML = `<div class="ft"><span>${esc(f.title)}</span>${f.inbox ? '<b class="count">0</b>' : ''}</div><div class="big" aria-hidden="true">${esc(f.title)}</div>`
+      // the title bar, plus a short name big, for when you're zoomed out (css shows one or the other).
+      // the big one stays on one line, capped so it fits its region (~0.62em a character, for the wide letters)
+      const big = f.big || f.title;
+      f.el.style.setProperty('--bfit', `${Math.floor((f.w - 28) / (big.length * 0.62))}px`);
+      f.el.innerHTML = `<div class="ft"><span>${esc(f.title)}</span>${f.inbox ? '<b class="count">0</b>' : ''}</div><div class="big" aria-hidden="true">${esc(big)}</div>`
         + (f.id === 'now' ? '<span class="grunt g-perch" data-grunt="collin:site:2" data-size="62" data-fps="15" data-move="bob" data-moods="curious,happy,wink"></span>' : '');
     }
     world.insertBefore(f.el, edgeSvg); // under the arrows, which run under the cards
@@ -687,13 +690,16 @@ function freeze() { view.tx = view.x; view.ty = view.y; view.tz = view.z; view.v
 // next column showing at the edge so it reads as a map
 const Z_HOME = [0.5, 0.82];
 function home(instant = false) {
-  const V = frameOf.vision, C = frameOf.charles, X = frameOf.xmade;
+  const V = frameOf.vision, N = frameOf.now, C = frameOf.charles, X = frameOf.xmade;
   let z, x0 = V.x, x1 = C.x + C.w;
   if (narrowLayout) { z = clamp((size.w - 24) / (V.w * 1.32), 0.56, 0.78); view.tx = 16 - V.x * z; }
   else {
-    z = clamp((size.w - 56) / (x1 - x0), Z_HOME[0], Z_HOME[1]);
-    if ((size.w - 56) / (X.x + X.w - x0) >= 0.62) { x1 = X.x + X.w; z = clamp((size.w - 56) / (x1 - x0), Z_HOME[0], Z_HOME[1]); }
-    view.tx = size.w / 2 - ((x0 + x1) / 2) * z;
+    const fitTo = (r) => (size.w - 56) / (r - x0);
+    // too narrow (a tablet) to read all three: how i build and now whole, on the side peeking in
+    if (fitTo(X.x + X.w) >= 0.62) x1 = X.x + X.w;
+    else if (fitTo(x1) < 0.62) x1 = N.x + N.w + 72;
+    z = clamp(fitTo(x1), Z_HOME[0], Z_HOME[1]);
+    view.tx = Math.max(size.w / 2 - ((x0 + x1) / 2) * z, 28 - x0 * z); // centred, but never clipping how i build
   }
   view.tz = z;
   view.ty = (narrowLayout ? 48 : 60) - V.y * z;

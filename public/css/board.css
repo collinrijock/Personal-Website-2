@@ -60,7 +60,8 @@ html:not(.js) .board { opacity: 1; height: auto; padding: clamp(14px, 2vw, 28px)
 /* the same title, big, for when you're zoomed out: it sits over the top of the region */
 .board .frame .big {
   position: absolute; left: 14px; top: 10px; right: 14px; z-index: 3; pointer-events: none;
-  font: 600 calc(17.5px * var(--iz)) / 1.02 var(--sans); letter-spacing: -0.03em; color: var(--pi); overflow-wrap: anywhere;
+  font: 600 min(calc(17.5px * var(--iz)), var(--bfit, 999px)) / 1.02 var(--sans); letter-spacing: -0.03em; color: var(--pi);
+  white-space: nowrap; overflow: hidden;
   /* out of the paint path entirely until it's needed (an opacity-0 element with a shadow still costs every frame) */
   visibility: hidden;
 }
