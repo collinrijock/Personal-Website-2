@@ -10,9 +10,9 @@
 // two modes:
 //   free    map.html. the page is the world: window-sized, wheel / drag / pinch / keys fly it,
 //           there's an intro, a tour and a guide grunt, and it draws whenever the tab is visible.
-//   scroll  the front page's #fly section (js/fly.js). sized by the stage element, no input at all
-//           (the page scrolls over it), no intro / tour / guide, and it only draws between start()
-//           and stop(). setProgress(p) puts the camera at p in [0, 1] along a precomputed flight:
+//   scroll  the front page's #fly section (js/fly.js). sized by the stage element, no input of its
+//           own (js/fly.js owns scroll, drag and keys), no intro / tour / guide, and it only draws
+//           between start() and stop(). setProgress(p) puts the camera at p in [0, 1] along a precomputed flight:
 //           far out, in to the name, around the ring past the boards in ROUTE, then a dive
 //           forward at the end. the caller smooths p; the camera follows it exactly.
 import * as THREE from 'three';
@@ -815,7 +815,7 @@ export async function createWorld({ stage, reduce = false, touch = false, onTour
   // keys are camera poses (position + a point to look at). position and look each run along a
   // centripetal catmull-rom through the keys; the plan says how much of p each leg gets, and eases
   // every leg in and out, so the camera settles at each board and glides between them.
-  const path = { p: 0, keys: [], plan: [], stops: [], total: 1, posC: null, lookC: null };
+  const path = { p: 0, px: 0, py: 0, diveAt: 1, keys: [], plan: [], stops: [], total: 1, posC: null, lookC: null };
   let stale = false;
   const hAngle = (v) => Math.atan2(v.x, v.z);
   // between boards: linger at each end, swoop through the middle (smoothstep of a smoothstep)
@@ -875,6 +875,7 @@ export async function createWorld({ stage, reduce = false, touch = false, onTour
     const dive = key(top, top.clone().addScaledVector(fwdL.clone().addScaledVector(UP, 0.6).normalize(), 4000));
     plan.push({ a: last, b: dive, w: 1.4, ease: (u) => u * u * (2 - u) * 0.5 + u * u * 0.5 });
     path.total = plan.reduce((a, e) => a + e.w, 0);
+    path.diveAt = (path.total - plan[plan.length - 1].w) / path.total;
     let acc = 0;
     for (const e of plan) {
       if (e.stop) { e.stop.at = (acc + e.w / 2) / path.total; }
@@ -887,7 +888,7 @@ export async function createWorld({ stage, reduce = false, touch = false, onTour
     path.posC = curve(keys.map((k) => k.pos));
     path.lookC = curve(keys.map((k) => k.look));
   }
-  const pathPos = new V3(), pathLook = new V3(), pathTmp = new V3();
+  const pathPos = new V3(), pathLook = new V3(), pathTmp = new V3(), panR = new V3(), panU = new V3();
   function followPath() {
     const n = path.keys.length - 1;
     let x = path.p * path.total;
@@ -905,6 +906,17 @@ export async function createWorld({ stage, reduce = false, touch = false, onTour
       const t = (e.a + (e.b - e.a) * v) / n;
       path.posC.getPoint(t, pathPos);
       path.lookC.getPoint(t, pathLook);
+    }
+    // a pan (the immersed fly-through drags the view): shift camera and look together, in screen
+    // pixels at the look's depth, so what's under the cursor moves with it
+    if (path.px || path.py) {
+      const D = pathPos.distanceTo(pathLook), wpp = (2 * D * tanV) / vh;
+      pathTmp.copy(pathLook).sub(pathPos).normalize();
+      panR.crossVectors(pathTmp, UP).normalize();
+      panU.crossVectors(panR, pathTmp);
+      panR.multiplyScalar(-path.px * wpp).addScaledVector(panU, path.py * wpp);
+      pathPos.add(panR);
+      pathLook.add(panR);
     }
     ctl.pos.copy(pathPos);
     pathTmp.copy(pathLook).sub(pathPos).normalize();
@@ -1342,6 +1354,10 @@ export async function createWorld({ stage, reduce = false, touch = false, onTour
       stop: halt,
       setRunning: (on) => (on ? (run(), (stale = false)) : halt()),
       setProgress: (p) => { path.p = clamp(+p || 0, 0, 1); },
+      // shift the view by (x, y) screen pixels, for dragging around while immersed
+      setPan: (x, y) => { path.px = +x || 0; path.py = +y || 0; },
+      // where the last board ends and the dive into open sky begins
+      get diveAt() { return path.diveAt; },
       setDark,
       renderOnce: () => { if (!raf) { now = performance.now() / 1000; tick(0); stale = false; } },
       get running() { return !!raf; },
