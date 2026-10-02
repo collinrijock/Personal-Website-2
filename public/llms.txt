@@ -2,14 +2,14 @@
 
 > software engineer in miami. lead software engineer at exowatt. i love building software, and i'm getting into building hardware.
 
-the front page is a hero, then one big shared canvas: a map of regions and cards you pan and zoom (everything below as stickies, quotes, link cards and chips, with simulated agent cursors sorting and wiring it up), then a 3d fly-through of the same content that ends in "say hi."
+the front page is a hero, then one big shared canvas: a map of regions and cards you pan and zoom (everything below as stickies, quotes, link cards and chips, with simulated agent cursors sorting and wiring it up), then the same content as a 3d map (scroll past it, or click to step in and fly it), ending in "say hi."
 
 - email: collin@rijock.com
 - x / twitter: https://x.com/CollinRijock
 - github: https://github.com/collinrijock
 - linkedin: https://www.linkedin.com/in/collin-rijock/
 - writing: https://app.collinrijock.com/blog
-- the map: everything on this site as a 3d brainstorm. the front page flies through it as you scroll (collinrijock.com/#fly), and map.html (collinrijock.com/map) lets you fly it yourself.
+- the map: everything on this site as a 3d brainstorm. on the front page you scroll past it or click to step in and fly it (collinrijock.com/#fly), and map.html (collinrijock.com/map) lets you fly it yourself.
 
 ## how i build
 

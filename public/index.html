@@ -161,8 +161,10 @@
   </div>
 </section>
 
-<!-- fly:start · the 3d fly-through and the get-in-touch call to action (js/fly.js, css/fly.css).
-     a tall track with a sticky stage: scroll flies the camera through the map, then "say hi." lands.
+<!-- fly:start · the 3d map and the get-in-touch call to action (js/fly.js, css/fly.css).
+     a short track with a sticky stage: scrolling drifts past the map, then "say hi." lands.
+     a click on the map steps into it (full screen: scroll / scrub to fly, drag to look around),
+     and "back to the site" steps out again.
      without javascript (or webgl) it's a plain section: the call to action over css colour. -->
 <section class="fly" id="fly" aria-labelledby="h-fly" data-fly>
   <div class="fly-track">
@@ -174,10 +176,24 @@
       <header class="fly-head wrap">
         <h2 id="h-fly" class="label"><i style="--dot: var(--c2)"></i>the map</h2>
         <p class="fly-title">everything here, as a brainstorm you can fly through.</p>
-        <p class="fly-go" aria-hidden="true"><span>scroll to fly</span><i></i></p>
+        <p class="fly-go"><button type="button" class="fly-enter" data-fly-enter><svg class="ico" aria-hidden="true"><use href="#i-map"/></svg>step into the map <span aria-hidden="true">→</span></button><span class="fly-or">or keep scrolling</span></p>
       </header>
 
       <p class="fly-now" aria-hidden="true"><span class="fly-n"></span><span class="fly-t"></span></p>
+
+      <!-- only while you're in the map -->
+      <div class="fly-ui" data-fly-ui hidden>
+        <button type="button" class="fly-back" data-fly-back><span aria-hidden="true">←</span> back to the site</button>
+        <p class="fly-help" aria-hidden="true"><span class="help-fine">scroll to fly · drag to look around · esc to leave</span><span class="help-touch">drag to look around · slide to fly</span></p>
+        <div class="fly-scrub">
+          <button type="button" class="fly-step" data-fly-step="-1" aria-label="previous board"><span aria-hidden="true">‹</span></button>
+          <div class="fly-bar">
+            <input class="fly-range" type="range" min="0" max="1000" step="1" value="0" aria-label="how far through the map">
+            <div class="fly-ticks"></div>
+          </div>
+          <button type="button" class="fly-step" data-fly-step="1" aria-label="next board"><span aria-hidden="true">›</span></button>
+        </div>
+      </div>
 
       <div class="fly-cta" id="say-hi">
         <div class="fly-land">

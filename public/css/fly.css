@@ -1,6 +1,7 @@
-/* fly.css — the 3d fly-through section (#fly) and the get-in-touch call to action.
+/* fly.css — the 3d map section (#fly) and the get-in-touch call to action.
    js/fly.js puts one of three modes on the section:
-     .is-fly    a tall track with a sticky stage; scroll flies the map, then "say hi." lands
+     .is-fly    a short track with a sticky stage; scrolling drifts past the map, then "say hi." lands.
+                .is-im on top of it: you've stepped into the map (the stage pinned full screen)
      .is-still  reduced motion: one still pose of the map, the call to action over it
      .is-flat   no webgl (or the import failed): css colour and the call to action
    with no class at all (no javascript) it's the flat layout too.
@@ -148,7 +149,7 @@
 .fly-foot .more { margin: 0; padding: 0; align-self: center; font-size: 14.5px; }
 
 /* ── the fly-through ───────────────────────────────────────────────── */
-.fly.is-fly .fly-track { height: 480vh; }
+.fly.is-fly .fly-track { height: 210vh; }
 .fly.is-fly .fly-stage {
   position: sticky; top: 0;
   height: 100vh; height: 100svh;
@@ -183,23 +184,27 @@
 .fly.is-fly .fly-title { text-shadow: 0 0 24px var(--map-bg), 0 0 6px var(--map-bg); }
 .fly.is-fly .fly-go {
   margin-top: 26px;
-  display: inline-flex; align-items: center; gap: 12px;
-  font: 500 12px/1 var(--mono);
-  color: var(--ink-3);
+  display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px;
 }
-.fly-go i {
-  position: relative;
-  width: 1.5px; height: 34px;
-  border-radius: 2px;
-  background: color-mix(in oklab, var(--ink) 12%, transparent);
-  overflow: hidden;
+.fly-or { font: 500 12px/1 var(--mono); color: var(--ink-3); text-shadow: 0 0 14px var(--map-bg); }
+.fly-enter {
+  display: inline-flex; align-items: center; gap: 9px;
+  height: 46px; padding: 0 20px;
+  border: 0; border-radius: 999px;
+  font: 600 15.5px/1 var(--sans); letter-spacing: -0.01em;
+  color: #fff;
+  background: linear-gradient(100deg, var(--c1) 0%, var(--c0) 38%, var(--c2) 72%, var(--c3) 100%);
+  box-shadow: 0 12px 30px -12px color-mix(in oklab, var(--c0) 70%, transparent), inset 0 0 0 1px rgba(255, 255, 255, .25);
+  cursor: pointer;
+  transition: transform .2s ease, box-shadow .2s ease;
 }
-.fly-go i::after {
-  content: ""; position: absolute; left: 0; right: 0; top: -40%; height: 40%;
-  background: linear-gradient(var(--c1), var(--c2));
-  animation: fly-go 1.8s cubic-bezier(.5, 0, .3, 1) infinite;
-}
-@keyframes fly-go { to { top: 100%; } }
+.fly-enter .ico { width: 17px; height: 17px; }
+.fly-enter span[aria-hidden] { transition: transform .2s ease; }
+.fly-enter:hover { transform: translateY(-2px) scale(1.02); box-shadow: 0 18px 36px -12px color-mix(in oklab, var(--c2) 70%, transparent), inset 0 0 0 1px rgba(255, 255, 255, .35); }
+.fly-enter:hover span[aria-hidden] { transform: translateX(3px); }
+.fly-enter:focus-visible { border-radius: 999px; }
+/* while the map is what's showing, a click anywhere on it steps in */
+.fly.is-fly.can-enter:not(.is-im) .fly-stage { cursor: pointer; }
 
 .fly.is-fly .fly-now {
   position: absolute; z-index: 3;
@@ -225,6 +230,118 @@
 .fly.is-fly .fly-land { opacity: 0; visibility: hidden; will-change: transform, opacity; }
 /* the pills blur what's behind them only once the landing is still (a backdrop filter under a moving, scaling parent is a raster cost every frame) */
 .fly.is-landed .say-links a:not(.fly-mail), .fly:not(.is-fly) .say-links a:not(.fly-mail) { -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); background: color-mix(in oklab, var(--bg) 78%, transparent); }
+
+/* ── stepped into the map ───────────────────────────────────────────── */
+/* the stage pins over the page (which stops scrolling); the title and the call to action step out */
+html.fly-locked { overflow: hidden; scrollbar-gutter: stable; }
+.fly.is-im .fly-stage {
+  position: fixed; inset: 0; z-index: 40;
+  height: 100vh; height: 100dvh;
+  cursor: grab;
+  touch-action: none;
+  animation: fly-in .5s cubic-bezier(.2, .7, .2, 1);
+}
+@keyframes fly-in { from { clip-path: inset(4% 3% round 28px); } to { clip-path: inset(0 round 0); } }
+.fly.is-im.is-dragging .fly-stage { cursor: grabbing; }
+.fly.is-im .fly-head, .fly.is-im .fly-cta { visibility: hidden; }
+
+.fly-ui[hidden] { display: none; }
+.fly-ui { position: absolute; inset: 0; z-index: 6; pointer-events: none; animation: fly-ui .45s .1s ease both; }
+@keyframes fly-ui { from { opacity: 0; } }
+.fly-ui > * { pointer-events: auto; }
+.fly-ui .fly-help { pointer-events: none; }
+.fly-back {
+  position: absolute; left: var(--m); top: max(18px, env(safe-area-inset-top));
+  display: inline-flex; align-items: center; gap: 9px;
+  height: 46px; padding: 0 20px 0 17px;
+  border: 0; border-radius: 999px;
+  font: 600 15px/1 var(--sans); letter-spacing: -0.01em;
+  color: #0b1020;
+  background: rgba(255, 255, 255, .92);
+  box-shadow: 0 0 0 1px rgba(11, 16, 32, .08), 0 10px 28px -12px rgba(20, 24, 40, .35);
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+  cursor: pointer;
+  transition: transform .2s ease, box-shadow .2s ease;
+}
+.fly-back span { font-size: 17px; transition: transform .2s ease; }
+.fly-back:hover { transform: translateY(-1px); box-shadow: 0 0 0 1.5px var(--c0), 0 14px 30px -12px color-mix(in oklab, var(--c0) 55%, transparent); }
+.fly-back:hover span { transform: translateX(-3px); }
+.fly-back:focus-visible { border-radius: 999px; }
+.fly-help {
+  position: absolute; right: var(--m); top: max(18px, env(safe-area-inset-top));
+  height: 46px; display: flex; align-items: center;
+  font: 500 12px/1 var(--mono);
+  color: var(--ink-3);
+  text-shadow: 0 0 12px var(--map-bg), 0 0 4px var(--map-bg);
+}
+.help-touch { display: none; }
+@media (hover: none) and (pointer: coarse) { .help-fine { display: none; } .help-touch { display: inline; } }
+
+/* the scrubber: the whole flight, a mark per board */
+.fly-scrub {
+  position: absolute; left: 50%; bottom: max(22px, env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  width: min(620px, calc(100% - 32px));
+  display: flex; align-items: center; gap: 8px;
+  padding: 7px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .9);
+  box-shadow: 0 0 0 1px rgba(11, 16, 32, .08), 0 10px 28px -12px rgba(20, 24, 40, .3);
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+  cursor: default;
+}
+.fly-step {
+  flex: none;
+  width: 34px; height: 34px;
+  display: grid; place-items: center;
+  border: 0; border-radius: 50%;
+  font: 500 22px/1 var(--sans);
+  color: #0b1020;
+  background: #f1f3f8;
+  cursor: pointer;
+  transition: background .2s ease, color .2s ease;
+}
+.fly-step span { margin-top: -3px; }
+.fly-step:hover { background: color-mix(in oklab, var(--c0) 18%, #fff); }
+.fly-step:focus-visible { border-radius: 50%; }
+.fly-bar { position: relative; flex: 1; height: 34px; margin: 0 6px; }
+.fly-bar::before, .fly-bar::after {
+  content: ""; position: absolute; left: 0; top: 50%; height: 4px; margin-top: -2px; border-radius: 4px; pointer-events: none;
+}
+.fly-bar::before { right: 0; background: #e3e6ee; }
+.fly-bar::after { width: var(--at, 0%); background: linear-gradient(90deg, var(--c1), var(--c0), var(--c2)); }
+.fly-ticks { position: absolute; inset: 0; pointer-events: none; }
+.fly-tick {
+  position: absolute; left: var(--x); top: 50%; z-index: 1;
+  width: 8px; height: 8px; margin: -4px 0 0 -4px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 0 2px #c4cad8;
+  transition: box-shadow .25s ease, transform .25s ease;
+}
+.fly-tick.on { box-shadow: 0 0 0 2.5px var(--c0); transform: scale(1.25); }
+.fly-range {
+  position: relative; z-index: 2;
+  -webkit-appearance: none; appearance: none;
+  width: 100%; height: 34px; margin: 0;
+  background: transparent;
+  cursor: pointer;
+}
+.fly-range:focus-visible { outline: none; }
+.fly-range::-webkit-slider-runnable-track { height: 34px; background: transparent; }
+.fly-range::-moz-range-track { height: 34px; background: transparent; }
+.fly-range::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none;
+  width: 20px; height: 20px; margin-top: 7px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 0 2.5px var(--c0), 0 4px 10px -2px rgba(20, 24, 40, .35);
+}
+.fly-range::-moz-range-thumb { width: 20px; height: 20px; border: 0; border-radius: 50%; background: #fff; box-shadow: 0 0 0 2.5px var(--c0), 0 4px 10px -2px rgba(20, 24, 40, .35); }
+.fly-range:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 2.5px var(--c0), 0 0 0 6px color-mix(in oklab, var(--c0) 30%, transparent); }
+.fly-range:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 2.5px var(--c0), 0 0 0 6px color-mix(in oklab, var(--c0) 30%, transparent); }
+/* the board you're at sits over the scrubber */
+.fly.is-im .fly-now { bottom: calc(max(22px, env(safe-area-inset-bottom)) + 62px); z-index: 6; }
 
 /* reduced motion: a screen of the still map, then the call to action under it on the wash */
 .fly.is-still .fly-stage { display: block; }
@@ -346,11 +463,27 @@
   .fly-mount .quote:not([data-board="me"]) .in { text-shadow: none; }
   .fly-mount .sticky .in { box-shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 8px 20px -8px rgba(0, 0, 0, .5); }
   .fly .say-links a { box-shadow: inset 0 0 0 1.5px color-mix(in oklab, var(--ink) 16%, transparent), 0 8px 24px -14px rgba(0, 0, 0, .6); }
+  /* a little light behind "say hi." so its colour doesn't sink into the night */
+  .fly .say-row::before {
+    content: ""; position: absolute; z-index: -1; pointer-events: none;
+    left: 50%; top: 50%; width: 150%; height: 230%;
+    transform: translate(-50%, -50%);
+    background:
+      radial-gradient(closest-side, rgba(255, 255, 255, .26), rgba(255, 255, 255, .1) 45%, transparent),
+      radial-gradient(closest-side, color-mix(in oklab, var(--c2) 22%, transparent), transparent);
+  }
+  .fly-back { color: #eef1f8; background: rgba(16, 20, 34, .82); box-shadow: 0 0 0 1px rgba(255, 255, 255, .1), 0 10px 28px -12px rgba(0, 0, 0, .6); }
+  .fly-scrub { background: rgba(16, 20, 34, .82); box-shadow: 0 0 0 1px rgba(255, 255, 255, .1), 0 10px 28px -12px rgba(0, 0, 0, .6); }
+  .fly-step { color: #eef1f8; background: rgba(255, 255, 255, .08); }
+  .fly-step:hover { background: color-mix(in oklab, var(--c0) 30%, transparent); }
+  .fly-bar::before { background: rgba(255, 255, 255, .14); }
+  .fly-tick { background: #1a2032; box-shadow: 0 0 0 2px rgba(255, 255, 255, .28); }
+  .fly.is-im .fly-now { color: #eef1f8; background: rgba(16, 20, 34, .82); box-shadow: 0 0 0 1px rgba(255, 255, 255, .1); }
 }
 
 /* ── small screens ─────────────────────────────────────────────────── */
 @media (max-width: 600px) {
-  .fly.is-fly .fly-track { height: 460vh; }
+  .fly.is-fly .fly-track { height: 200vh; }
   .fly .say { font-size: clamp(84px, 27vw, 128px); }
   .fly .g-wave { --gs: 64px !important; width: 64px; height: 64px; }
   .fly .say-links { gap: 10px; margin-top: 28px; }
@@ -358,9 +491,13 @@
   .fly .say-links .fly-mail { height: 54px; font-size: 16.5px; padding: 0 22px; }
   .fly-foot { flex-direction: column; gap: 14px; margin-top: 26px; }
   .fly.is-fly .fly-now { bottom: max(16px, env(safe-area-inset-bottom)); }
+  .fly.is-im .fly-now { bottom: calc(max(16px, env(safe-area-inset-bottom)) + 60px); }
+  .fly-scrub { bottom: max(16px, env(safe-area-inset-bottom)); }
+  .fly-help { display: none; }
+  .fly-enter { height: 44px; font-size: 15px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .fly-go i::after { animation: none; top: 30%; }
+  .fly.is-im .fly-stage, .fly-ui { animation: none; }
   .fly-mount { transition: none; }
   .fly .say-links a, .cta-nda-btn { transition: none; }
 }
